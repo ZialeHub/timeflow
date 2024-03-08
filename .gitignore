@@ -1,0 +1,12 @@
+dist/
+target/
+.ssl
+.env
+logs/
+Cargo.lock
+
+**/node_modules/
+**/package-lock.json
+
+.vscode
+package.json

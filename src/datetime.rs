@@ -278,7 +278,7 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn test_add_overflow() -> Result<(), String> {
+    fn test_datetime_add_overflow() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Day, i32::MAX);
         assert_eq!(
@@ -289,7 +289,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_add_one_year() -> Result<(), String> {
+    fn test_datetime_add_one_year() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Year, 1);
         assert_eq!(new_datetime, Ok(()));
@@ -298,7 +298,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_remove_one_year() -> Result<(), String> {
+    fn test_datetime_remove_one_year() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Year, -1);
         assert_eq!(new_datetime, Ok(()));
@@ -307,7 +307,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_add_one_month() -> Result<(), String> {
+    fn test_datetime_add_one_month() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Month, 1);
         assert_eq!(new_datetime, Ok(()));
@@ -316,7 +316,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_remove_one_month() -> Result<(), String> {
+    fn test_datetime_remove_one_month() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Month, -1);
         assert_eq!(new_datetime, Ok(()));
@@ -325,7 +325,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_add_one_day() -> Result<(), String> {
+    fn test_datetime_add_one_day() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Day, 1);
         assert_eq!(new_datetime, Ok(()));
@@ -334,7 +334,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_remove_one_day() -> Result<(), String> {
+    fn test_datetime_remove_one_day() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Day, -1);
         assert_eq!(new_datetime, Ok(()));
@@ -343,7 +343,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_add_one_hour() -> Result<(), String> {
+    fn test_datetime_add_one_hour() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Hour, 1);
         assert_eq!(new_datetime, Ok(()));
@@ -352,7 +352,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_remove_one_hour() -> Result<(), String> {
+    fn test_datetime_remove_one_hour() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Hour, -1);
         assert_eq!(new_datetime, Ok(()));
@@ -361,7 +361,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_add_one_minute() -> Result<(), String> {
+    fn test_datetime_add_one_minute() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Minute, 1);
         assert_eq!(new_datetime, Ok(()));
@@ -370,7 +370,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_remove_one_minute() -> Result<(), String> {
+    fn test_datetime_remove_one_minute() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Minute, -1);
         assert_eq!(new_datetime, Ok(()));
@@ -379,7 +379,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_add_one_second() -> Result<(), String> {
+    fn test_datetime_add_one_second() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Second, 1);
         assert_eq!(new_datetime, Ok(()));
@@ -388,7 +388,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_remove_one_second() -> Result<(), String> {
+    fn test_datetime_remove_one_second() -> Result<(), String> {
         let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Second, -1);
         assert_eq!(new_datetime, Ok(()));

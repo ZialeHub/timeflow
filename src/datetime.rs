@@ -60,19 +60,27 @@ impl DerefMut for DateTime {
 }
 
 impl DateTime {
-    pub fn new(datetime: impl ToString, format: impl ToString) -> Self {
-        Self {
-            datetime: NaiveDateTime::parse_from_str(&datetime.to_string(), &format.to_string())
-                .unwrap(),
+    pub fn new(datetime: impl ToString, format: impl ToString) -> Result<Self, String> {
+        let datetime =
+            match NaiveDateTime::parse_from_str(&datetime.to_string(), &format.to_string()) {
+                Ok(datetime) => datetime,
+                Err(e) => return Err(format!("Error while parsing datetime: {e:?}")),
+            };
+        Ok(Self {
+            datetime,
             format: format.to_string(),
-        }
+        })
     }
 
-    pub fn build(datetime: impl ToString) -> Self {
-        Self {
-            datetime: datetime_to_base_format(&datetime.to_string()).unwrap(),
+    pub fn build(datetime: impl ToString) -> Result<Self, String> {
+        let datetime = match datetime_to_base_format(&datetime.to_string()) {
+            Ok(datetime) => datetime,
+            Err(e) => return Err(format!("Error while parsing datetime into BASE_DATETIME_FORMAT '{BASE_DATETIME_FORMAT}': {e:?}")),
+        };
+        Ok(Self {
+            datetime,
             format: BASE_DATETIME_FORMAT.to_string(),
-        }
+        })
     }
 
     pub fn datetime(&self) -> NaiveDateTime {
@@ -104,9 +112,15 @@ impl DateTime {
             DateTimeUnit::Day => self
                 .datetime
                 .checked_sub_days(Days::new(value.unsigned_abs() as u64)),
-            DateTimeUnit::Hour => Some(self.datetime + Duration::hours(value as i64)),
-            DateTimeUnit::Minute => Some(self.datetime + Duration::minutes(value as i64)),
-            DateTimeUnit::Second => Some(self.datetime + Duration::seconds(value as i64)),
+            DateTimeUnit::Hour => {
+                Duration::try_hours(value as i64).map(|hours| self.datetime + hours)
+            }
+            DateTimeUnit::Minute => {
+                Duration::try_minutes(value as i64).map(|minutes| self.datetime + minutes)
+            }
+            DateTimeUnit::Second => {
+                Duration::try_seconds(value as i64).map(|seconds| self.datetime + seconds)
+            }
         };
         match datetime {
             Some(datetime) => {
@@ -135,15 +149,22 @@ impl DateTime {
         }
     }
 
-    pub fn now() -> Self {
-        Self {
-            datetime: get_now_datetime().unwrap(),
+    pub fn now() -> Result<Self, String> {
+        let datetime = match get_now_datetime() {
+            Ok(datetime) => datetime,
+            Err(e) => return Err(e),
+        };
+        Ok(Self {
+            datetime,
             format: BASE_DATETIME_FORMAT.to_string(),
-        }
+        })
     }
 
-    pub fn is_in_future(&self) -> bool {
-        self.datetime > get_now_datetime().unwrap()
+    pub fn is_in_future(&self) -> Result<bool, String> {
+        match get_now_datetime() {
+            Ok(now) => Ok(self.datetime > now),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn elapsed(&self, lhs: &Self) -> Duration {
@@ -158,80 +179,97 @@ impl DateTime {
                     - (lhs.datetime.year() * 12 + lhs.datetime.month() as i32)
             }
             DateTimeUnit::Day => {
-                (self.datetime.timestamp() as i32 - lhs.datetime.timestamp() as i32) / 60 / 60 / 24
+                (self.datetime.and_utc().timestamp() as i32
+                    - lhs.datetime.and_utc().timestamp() as i32)
+                    / 60
+                    / 60
+                    / 24
             }
             DateTimeUnit::Hour => {
-                (self.datetime.timestamp() as i32 - lhs.datetime.timestamp() as i32) / 60 / 60
+                (self.datetime.and_utc().timestamp() as i32
+                    - lhs.datetime.and_utc().timestamp() as i32)
+                    / 60
+                    / 60
             }
             DateTimeUnit::Minute => {
-                (self.datetime.timestamp() as i32 - lhs.datetime.timestamp() as i32) / 60
+                (self.datetime.and_utc().timestamp() as i32
+                    - lhs.datetime.and_utc().timestamp() as i32)
+                    / 60
             }
             DateTimeUnit::Second => {
-                self.datetime.timestamp() as i32 - lhs.datetime.timestamp() as i32
+                self.datetime.and_utc().timestamp() as i32
+                    - lhs.datetime.and_utc().timestamp() as i32
             }
         }
         .abs()
     }
 
     pub fn timestamp(&self) -> i64 {
-        self.datetime.timestamp()
+        self.datetime.and_utc().timestamp()
     }
 
-    pub fn start_of_day(&self) -> Self {
-        DateTime::from(
-            self.datetime
-                .with_hour(0)
-                .unwrap()
-                .with_minute(0)
-                .unwrap()
-                .with_second(0)
-                .unwrap(),
-        )
+    pub fn start_of_day(&self) -> Result<Self, String> {
+        let datetime = self
+            .datetime
+            .with_hour(0)
+            .inspect(|datetime| {
+                datetime.with_minute(0);
+            })
+            .inspect(|datetime| {
+                datetime.with_second(0);
+            })
+            .ok_or("Error while setting start of day".to_string())?;
+        DateTime::try_from(datetime)
     }
 }
 
-impl From<NaiveDateTime> for DateTime {
-    fn from(datetime: NaiveDateTime) -> Self {
+impl TryFrom<NaiveDateTime> for DateTime {
+    type Error = String;
+    fn try_from(datetime: NaiveDateTime) -> Result<Self, Self::Error> {
         Self::build(datetime)
     }
 }
 
-impl From<u32> for DateTime {
-    fn from(timestamp: u32) -> Self {
-        Self::build(NaiveDateTime::from_timestamp_opt(timestamp as i64, 0).unwrap())
+impl TryFrom<i32> for DateTime {
+    type Error = String;
+    fn try_from(timestamp: i32) -> Result<Self, Self::Error> {
+        let datetime = match chrono::DateTime::from_timestamp(timestamp as i64, 0) {
+            Some(datetime) => datetime,
+            None => return Err("Error while parsing timestamp from i32".to_string()),
+        };
+        Self::build(datetime)
     }
 }
 
-impl From<u64> for DateTime {
-    fn from(timestamp: u64) -> Self {
-        Self::build(NaiveDateTime::from_timestamp_opt(timestamp as i64, 0).unwrap())
+impl TryFrom<i64> for DateTime {
+    type Error = String;
+    fn try_from(timestamp: i64) -> Result<Self, Self::Error> {
+        let datetime = match chrono::DateTime::from_timestamp(timestamp, 0) {
+            Some(datetime) => datetime,
+            None => return Err("Error while parsing timestamp from i64".to_string()),
+        };
+        Self::build(datetime)
     }
 }
 
-impl From<(String, String)> for DateTime {
-    fn from((datetime, format): (String, String)) -> Self {
-        Self {
-            datetime: NaiveDateTime::parse_from_str(&datetime, &format).unwrap(),
-            format,
-        }
+impl TryFrom<(String, String)> for DateTime {
+    type Error = String;
+    fn try_from((datetime, format): (String, String)) -> Result<Self, Self::Error> {
+        Self::new(datetime, format)
     }
 }
 
-impl From<(&str, &str)> for DateTime {
-    fn from((datetime, format): (&str, &str)) -> Self {
-        Self {
-            datetime: NaiveDateTime::parse_from_str(datetime, format).unwrap(),
-            format: format.to_string(),
-        }
+impl TryFrom<(&str, &str)> for DateTime {
+    type Error = String;
+    fn try_from((datetime, format): (&str, &str)) -> Result<Self, Self::Error> {
+        Self::new(datetime, format)
     }
 }
 
-impl From<&str> for DateTime {
-    fn from(datetime: &str) -> Self {
-        Self::build(
-            NaiveDateTime::parse_from_str(datetime, BASE_DATETIME_FORMAT)
-                .expect("Error while parsing datetime"),
-        )
+impl TryFrom<&str> for DateTime {
+    type Error = String;
+    fn try_from(datetime: &str) -> Result<Self, Self::Error> {
+        Self::build(datetime)
     }
 }
 
@@ -240,134 +278,121 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn test_add_overflow() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_overflow() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Day, i32::MAX);
         assert_eq!(
             new_datetime,
             Err("Cannot Add/Remove 2147483647 Day to/from 2023-10-09 00:00:00".to_string())
         );
+        Ok(())
     }
 
     #[test]
-    fn test_add_one_year() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_one_year() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Year, 1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2024-10-09 00:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_remove_one_year() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_remove_one_year() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Year, -1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2022-10-09 00:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_add_one_month() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_one_month() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Month, 1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-11-09 00:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_remove_one_month() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_remove_one_month() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Month, -1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-09-09 00:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_add_one_day() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_one_day() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Day, 1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-10 00:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_remove_one_day() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_remove_one_day() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Day, -1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-08 00:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_add_one_hour() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_one_hour() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Hour, 1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-09 01:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_remove_one_hour() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_remove_one_hour() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Hour, -1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-08 23:00:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_add_one_minute() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_one_minute() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Minute, 1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-09 00:01:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_remove_one_minute() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_remove_one_minute() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Minute, -1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-08 23:59:00".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_add_one_second() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_add_one_second() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Second, 1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-09 00:00:01".to_string());
+        Ok(())
     }
 
     #[test]
-    fn test_remove_one_second() {
-        let mut datetime = DateTime::build(
-            NaiveDateTime::parse_from_str("2023-10-09 00:00:00", BASE_DATETIME_FORMAT).unwrap(),
-        );
+    fn test_remove_one_second() -> Result<(), String> {
+        let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
         let new_datetime = datetime.update(DateTimeUnit::Second, -1);
         assert_eq!(new_datetime, Ok(()));
         assert_eq!(datetime.to_string(), "2023-10-08 23:59:59".to_string());
+        Ok(())
     }
 }

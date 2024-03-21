@@ -70,7 +70,7 @@ impl DateTime {
         })
     }
 
-    pub fn get_datetime(&self) -> NaiveDateTime {
+    pub fn datetime(&self) -> NaiveDateTime {
         self.datetime
     }
 

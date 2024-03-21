@@ -4,19 +4,6 @@ use chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike};
 
 pub const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
-fn get_now_datetime() -> Result<NaiveDateTime, String> {
-    let now = NaiveDateTime::parse_from_str(
-        &Local::now().format(BASE_DATETIME_FORMAT).to_string(),
-        BASE_DATETIME_FORMAT,
-    )
-    .map_err(|e| format!("Error while parsing now datetime: {e:?}"))?;
-    Ok(now)
-}
-
-fn datetime_to_base_format(datetime: &str) -> Result<NaiveDateTime, String> {
-    NaiveDateTime::parse_from_str(datetime, BASE_DATETIME_FORMAT).map_err(|e| e.to_string())
-}
-
 #[derive(Debug, Clone)]
 pub enum DateTimeUnit {
     Year,
@@ -73,7 +60,7 @@ impl DateTime {
     }
 
     pub fn build(datetime: impl ToString) -> Result<Self, String> {
-        let datetime = match datetime_to_base_format(&datetime.to_string()) {
+        let datetime = match NaiveDateTime::parse_from_str(&datetime.to_string(), BASE_DATETIME_FORMAT) {
             Ok(datetime) => datetime,
             Err(e) => return Err(format!("Error while parsing datetime into BASE_DATETIME_FORMAT '{BASE_DATETIME_FORMAT}': {e:?}")),
         };
@@ -150,21 +137,12 @@ impl DateTime {
     }
 
     pub fn now() -> Result<Self, String> {
-        let datetime = match get_now_datetime() {
-            Ok(datetime) => datetime,
-            Err(e) => return Err(e),
-        };
-        Ok(Self {
-            datetime,
-            format: BASE_DATETIME_FORMAT.to_string(),
-        })
+        Self::build(Local::now().format(BASE_DATETIME_FORMAT))
     }
 
     pub fn is_in_future(&self) -> Result<bool, String> {
-        match get_now_datetime() {
-            Ok(now) => Ok(self.datetime > now),
-            Err(e) => Err(e),
-        }
+        let now = Self::build(Local::now().format(BASE_DATETIME_FORMAT))?;
+        Ok(self.datetime > now.datetime)
     }
 
     pub fn elapsed(&self, lhs: &Self) -> Duration {
@@ -208,7 +186,7 @@ impl DateTime {
         self.datetime.and_utc().timestamp()
     }
 
-    pub fn start_of_day(&self) -> Result<Self, String> {
+    pub fn clear_time(&self) -> Result<Self, String> {
         let datetime = self
             .datetime
             .with_hour(0)

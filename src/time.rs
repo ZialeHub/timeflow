@@ -59,7 +59,7 @@ impl Time {
         Self::new(time, BASE_TIME_FORMAT)
     }
 
-    pub fn get_time(&self) -> NaiveTime {
+    pub fn time(&self) -> NaiveTime {
         self.time
     }
 

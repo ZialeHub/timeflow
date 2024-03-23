@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
 use lazy_static::lazy_static;
 
@@ -9,8 +12,7 @@ pub mod time;
 lazy_static! {
     static ref BASE_DATE_FORMAT: Arc<Mutex<&'static str>> = Arc::new(Mutex::new("%Y-%m-%d"));
     static ref BASE_TIME_FORMAT: Arc<Mutex<&'static str>> = Arc::new(Mutex::new("%H:%M:%S"));
-    static ref BASE_DATETIME_FORMAT: Arc<Mutex<&'static str>> =
-        Arc::new(Mutex::new("%Y-%m-%d %H:%M:%S"));
+    static ref BASE_DATETIME_FORMAT: Arc<Mutex<Option<&'static str>>> = Arc::new(Mutex::new(None));
 }
 
 impl BASE_DATE_FORMAT {
@@ -26,8 +28,11 @@ impl BASE_TIME_FORMAT {
 }
 
 impl BASE_DATETIME_FORMAT {
-    pub fn get(&self) -> &'static str {
-        &self.lock().unwrap()
+    pub fn get(&self) -> String {
+        match self.lock().unwrap().deref() {
+            Some(format) => format.to_string(),
+            None => format!("{} {}", BASE_DATE_FORMAT.get(), BASE_TIME_FORMAT.get()),
+        }
     }
 }
 
@@ -68,8 +73,8 @@ impl TimeBuilder {
             None => *BASE_TIME_FORMAT.lock().unwrap() = "%H:%M:%S",
         }
         match self.datetime_format {
-            Some(datetime_format) => *BASE_DATETIME_FORMAT.lock().unwrap() = datetime_format,
-            None => *BASE_DATETIME_FORMAT.lock().unwrap() = "%Y-%m-%d %H:%M:%S",
+            Some(datetime_format) => *BASE_DATETIME_FORMAT.lock().unwrap() = Some(datetime_format),
+            None => *BASE_DATETIME_FORMAT.lock().unwrap() = None,
         }
     }
 }
@@ -117,6 +122,19 @@ mod tests {
         datetime::DateTime::new("2023-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")?;
         date::Date::new("2023-01-01", "%Y-%m-%d")?;
         time::Time::new("12:00:00", "%H:%M:%S")?;
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn test_builder_format_build_datetime_skipped() -> Result<(), String> {
+        TimeBuilder::builder()
+            .date_format("%d/%m/%Y")
+            .time_format("%H_%M_%S")
+            .build();
+        datetime::DateTime::build("01/01/2023 12_00_00")?;
+        date::Date::build("01/01/2023")?;
+        time::Time::build("12_00_00")?;
         Ok(())
     }
 }

@@ -12,7 +12,7 @@ pub fn datetime_to_str<S: Serializer>(
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     datetime
-        .format(BASE_DATETIME_FORMAT.get())
+        .format(&BASE_DATETIME_FORMAT.get())
         .to_string()
         .serialize(serializer)
 }
@@ -22,7 +22,7 @@ where
     D: Deserializer<'de>,
 {
     let date: String = Deserialize::deserialize(deserializer)?;
-    NaiveDateTime::parse_from_str(&date, BASE_DATETIME_FORMAT.get()).map_err(de::Error::custom)
+    NaiveDateTime::parse_from_str(&date, &BASE_DATETIME_FORMAT.get()).map_err(de::Error::custom)
 }
 
 #[derive(Debug, Clone)]
@@ -84,18 +84,17 @@ impl DateTime {
     }
 
     pub fn build(datetime: impl ToString) -> Result<Self, String> {
-        let datetime = match NaiveDateTime::parse_from_str(
-            &datetime.to_string(),
-            BASE_DATETIME_FORMAT.get(),
-        ) {
-            Ok(datetime) => datetime,
-            Err(e) => {
-                return Err(format!(
-                    "Error while parsing datetime into BASE_DATETIME_FORMAT '{}': {e:?}",
-                    BASE_DATETIME_FORMAT.get()
-                ))
-            }
-        };
+        let datetime =
+            match NaiveDateTime::parse_from_str(&datetime.to_string(), &BASE_DATETIME_FORMAT.get())
+            {
+                Ok(datetime) => datetime,
+                Err(e) => {
+                    return Err(format!(
+                        "Error while parsing datetime into BASE_DATETIME_FORMAT '{}': {e:?}",
+                        BASE_DATETIME_FORMAT.get()
+                    ))
+                }
+            };
         Ok(Self {
             datetime,
             format: BASE_DATETIME_FORMAT.get().to_string(),
@@ -169,11 +168,11 @@ impl DateTime {
     }
 
     pub fn now() -> Result<Self, String> {
-        Self::build(Local::now().format(BASE_DATETIME_FORMAT.get()))
+        Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))
     }
 
     pub fn is_in_future(&self) -> Result<bool, String> {
-        let now = Self::build(Local::now().format(BASE_DATETIME_FORMAT.get()))?;
+        let now = Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))?;
         Ok(self.datetime > now.datetime)
     }
 

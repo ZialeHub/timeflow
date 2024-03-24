@@ -3,10 +3,12 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Local, NaiveDateTime, NaiveTime, TimeDelta, Timelike};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-const BASE_TIME_FORMAT: &str = "%H:%M:%S";
+use crate::BASE_TIME_FORMAT;
+
+// const BASE_TIME_FORMAT: &str = "%H:%M:%S";
 
 pub fn time_to_str<S: Serializer>(time: &NaiveTime, serializer: S) -> Result<S::Ok, S::Error> {
-    time.format(BASE_TIME_FORMAT)
+    time.format(BASE_TIME_FORMAT.get())
         .to_string()
         .serialize(serializer)
 }
@@ -16,11 +18,11 @@ where
     D: Deserializer<'de>,
 {
     let time: String = Deserialize::deserialize(deserializer)?;
-    NaiveTime::parse_from_str(&time, BASE_TIME_FORMAT).map_err(de::Error::custom)
+    NaiveTime::parse_from_str(&time, BASE_TIME_FORMAT.get()).map_err(de::Error::custom)
 }
 
 #[derive(Debug, Clone)]
-enum TimeUnit {
+pub enum TimeUnit {
     Hour,
     Minute,
     Second,
@@ -32,7 +34,7 @@ enum TimeUnit {
 ///
 /// BASE_TIME_FORMAT is the default format for time
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Time {
+pub struct Time {
     #[serde(serialize_with = "time_to_str", deserialize_with = "time_from_str")]
     pub time: NaiveTime,
     pub format: String,
@@ -77,7 +79,7 @@ impl Time {
     }
 
     pub fn build(time: impl ToString) -> Result<Self, String> {
-        Self::new(time, BASE_TIME_FORMAT)
+        Self::new(time, BASE_TIME_FORMAT.get())
     }
 
     pub fn time(&self) -> NaiveTime {
@@ -120,14 +122,14 @@ impl Time {
     }
 
     pub fn now() -> Result<Self, String> {
-        Self::build(Local::now().format(BASE_TIME_FORMAT))
+        Self::build(Local::now().format(BASE_TIME_FORMAT.get()))
     }
 
     pub fn midnight() -> Self {
         let time = NaiveTime::from_hms_opt(0, 0, 0).expect("Error Time midnight");
         Self {
             time,
-            format: BASE_TIME_FORMAT.to_string(),
+            format: BASE_TIME_FORMAT.get().to_string(),
         }
     }
 
@@ -152,7 +154,7 @@ impl From<NaiveDateTime> for Time {
     fn from(datetime: NaiveDateTime) -> Self {
         Self {
             time: datetime.time(),
-            format: BASE_TIME_FORMAT.to_string(),
+            format: BASE_TIME_FORMAT.get().to_string(),
         }
     }
 }
@@ -161,7 +163,7 @@ impl From<NaiveTime> for Time {
     fn from(time: NaiveTime) -> Self {
         Self {
             time,
-            format: BASE_TIME_FORMAT.to_string(),
+            format: BASE_TIME_FORMAT.get().to_string(),
         }
     }
 }
@@ -284,7 +286,7 @@ pub mod test {
             return Err("Error while deserializing time".to_string());
         };
         assert_eq!(time.to_string(), "12:21:46".to_string());
-        assert_eq!(time.format, BASE_TIME_FORMAT.to_string());
+        assert_eq!(time.format, BASE_TIME_FORMAT.get().to_string());
         Ok(())
     }
 

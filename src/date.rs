@@ -3,10 +3,12 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Datelike, Days, Duration, Local, Months, NaiveDate, NaiveDateTime};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
+use crate::BASE_DATE_FORMAT;
+
+// const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
 
 pub fn date_to_str<S: Serializer>(date: &NaiveDate, serializer: S) -> Result<S::Ok, S::Error> {
-    date.format(BASE_DATE_FORMAT)
+    date.format(BASE_DATE_FORMAT.get())
         .to_string()
         .serialize(serializer)
 }
@@ -16,11 +18,11 @@ where
     D: Deserializer<'de>,
 {
     let date: String = Deserialize::deserialize(deserializer)?;
-    NaiveDate::parse_from_str(&date, BASE_DATE_FORMAT).map_err(de::Error::custom)
+    NaiveDate::parse_from_str(&date, BASE_DATE_FORMAT.get()).map_err(de::Error::custom)
 }
 
 #[derive(Debug, Clone)]
-enum DateUnit {
+pub enum DateUnit {
     Year,
     Month,
     Day,
@@ -32,7 +34,7 @@ enum DateUnit {
 ///
 /// BASE_DATE_FORMAT is the default format for date
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Date {
+pub struct Date {
     #[serde(serialize_with = "date_to_str", deserialize_with = "date_from_str")]
     pub date: NaiveDate,
     pub format: String,
@@ -71,7 +73,7 @@ impl Date {
     }
 
     pub fn build(date: impl ToString) -> Result<Self, String> {
-        Self::new(date, BASE_DATE_FORMAT)
+        Self::new(date, BASE_DATE_FORMAT.get())
     }
 
     pub fn date(&self) -> NaiveDate {
@@ -125,7 +127,7 @@ impl Date {
     }
 
     pub fn today() -> Result<Self, String> {
-        Self::build(Local::now().format(BASE_DATE_FORMAT))
+        Self::build(Local::now().format(BASE_DATE_FORMAT.get()))
     }
 
     pub fn is_in_future(&self) -> Result<bool, String> {
@@ -149,7 +151,7 @@ impl From<NaiveDateTime> for Date {
     fn from(value: NaiveDateTime) -> Self {
         Self {
             date: value.date(),
-            format: BASE_DATE_FORMAT.to_string(),
+            format: BASE_DATE_FORMAT.get().to_string(),
         }
     }
 }
@@ -158,7 +160,7 @@ impl From<NaiveDate> for Date {
     fn from(value: NaiveDate) -> Self {
         Self {
             date: value,
-            format: BASE_DATE_FORMAT.to_string(),
+            format: BASE_DATE_FORMAT.get().to_string(),
         }
     }
 }
@@ -180,14 +182,14 @@ impl TryFrom<(&str, &str)> for Date {
 impl TryFrom<String> for Date {
     type Error = String;
     fn try_from(date: String) -> Result<Self, Self::Error> {
-        Self::new(date, BASE_DATE_FORMAT)
+        Self::new(date, BASE_DATE_FORMAT.get())
     }
 }
 
 impl TryFrom<&str> for Date {
     type Error = String;
     fn try_from(date: &str) -> Result<Self, Self::Error> {
-        Self::new(date, BASE_DATE_FORMAT)
+        Self::new(date, BASE_DATE_FORMAT.get())
     }
 }
 
@@ -280,7 +282,7 @@ pub mod test {
             return Err("Error while deserializing date".to_string());
         };
         assert_eq!(date.to_string(), "2023-10-09".to_string());
-        assert_eq!(date.format, BASE_DATE_FORMAT.to_string());
+        assert_eq!(date.format, BASE_DATE_FORMAT.get().to_string());
         Ok(())
     }
 

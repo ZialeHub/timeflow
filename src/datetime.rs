@@ -3,14 +3,16 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
+use crate::BASE_DATETIME_FORMAT;
+
+// const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
 pub fn datetime_to_str<S: Serializer>(
     datetime: &NaiveDateTime,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     datetime
-        .format(BASE_DATETIME_FORMAT)
+        .format(&BASE_DATETIME_FORMAT.get())
         .to_string()
         .serialize(serializer)
 }
@@ -20,7 +22,7 @@ where
     D: Deserializer<'de>,
 {
     let date: String = Deserialize::deserialize(deserializer)?;
-    NaiveDateTime::parse_from_str(&date, BASE_DATETIME_FORMAT).map_err(de::Error::custom)
+    NaiveDateTime::parse_from_str(&date, &BASE_DATETIME_FORMAT.get()).map_err(de::Error::custom)
 }
 
 #[derive(Debug, Clone)]
@@ -82,13 +84,20 @@ impl DateTime {
     }
 
     pub fn build(datetime: impl ToString) -> Result<Self, String> {
-        let datetime = match NaiveDateTime::parse_from_str(&datetime.to_string(), BASE_DATETIME_FORMAT) {
-            Ok(datetime) => datetime,
-            Err(e) => return Err(format!("Error while parsing datetime into BASE_DATETIME_FORMAT '{BASE_DATETIME_FORMAT}': {e:?}")),
-        };
+        let datetime =
+            match NaiveDateTime::parse_from_str(&datetime.to_string(), &BASE_DATETIME_FORMAT.get())
+            {
+                Ok(datetime) => datetime,
+                Err(e) => {
+                    return Err(format!(
+                        "Error while parsing datetime into BASE_DATETIME_FORMAT '{}': {e:?}",
+                        BASE_DATETIME_FORMAT.get()
+                    ))
+                }
+            };
         Ok(Self {
             datetime,
-            format: BASE_DATETIME_FORMAT.to_string(),
+            format: BASE_DATETIME_FORMAT.get().to_string(),
         })
     }
 
@@ -159,11 +168,11 @@ impl DateTime {
     }
 
     pub fn now() -> Result<Self, String> {
-        Self::build(Local::now().format(BASE_DATETIME_FORMAT))
+        Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))
     }
 
     pub fn is_in_future(&self) -> Result<bool, String> {
-        let now = Self::build(Local::now().format(BASE_DATETIME_FORMAT))?;
+        let now = Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))?;
         Ok(self.datetime > now.datetime)
     }
 
@@ -417,7 +426,7 @@ pub mod test {
             return Err("Error while deserializing datetime".to_string());
         };
         assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
-        assert_eq!(datetime.format, BASE_DATETIME_FORMAT.to_string());
+        assert_eq!(datetime.format, BASE_DATETIME_FORMAT.get().to_string());
         Ok(())
     }
 

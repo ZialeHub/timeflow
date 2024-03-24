@@ -4,10 +4,14 @@ pub mod time;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TimeRSError {
-    #[error("{0} ➤  Parse: {1}")]
-    Parse(Type, String),
+    #[error("{0} ➤  ParseFromStr: {1}")]
+    ParseFromStr(#[source] Type, String),
+    #[error("{0} ➤  ParseFromTimestamp: {1}")]
+    ParseFromTimestamp(#[source] Type, String),
+    #[error("{0} ➤  ClearTime: {1}")]
+    ClearTime(#[source] Type, String),
     #[error("{0} ➤  InvalidUpdate: {1}")]
-    InvalidUpdate(Type, String),
+    InvalidUpdate(#[source] Type, String),
 }
 
 #[derive(thiserror::Error, Debug, derive_more::Display, PartialEq)]
@@ -25,8 +29,11 @@ pub mod test {
 
     #[test]
     fn test_log_error_datetime_parse() {
-        let err = TimeRSError::Parse(Type::Datetime, "parse_from_str error".to_string());
-        assert_eq!(err.to_string(), "Datetime ➤  Parse: parse_from_str error")
+        let err = TimeRSError::ParseFromStr(Type::Datetime, "parse_from_str error".to_string());
+        assert_eq!(
+            err.to_string(),
+            "Datetime ➤  ParseFromStr: parse_from_str error"
+        )
     }
 
     #[test]
@@ -43,8 +50,11 @@ pub mod test {
 
     #[test]
     fn test_log_error_date_parse() {
-        let err = TimeRSError::Parse(Type::Date, "parse_from_str error".to_string());
-        assert_eq!(err.to_string(), "Date ➤  Parse: parse_from_str error")
+        let err = TimeRSError::ParseFromStr(Type::Date, "parse_from_str error".to_string());
+        assert_eq!(
+            err.to_string(),
+            "Date ➤  ParseFromStr: parse_from_str error"
+        )
     }
 
     #[test]
@@ -59,8 +69,11 @@ pub mod test {
 
     #[test]
     fn test_log_error_time_parse() {
-        let err = TimeRSError::Parse(Type::Time, "parse_from_str error".to_string());
-        assert_eq!(err.to_string(), "Time ➤  Parse: parse_from_str error")
+        let err = TimeRSError::ParseFromStr(Type::Time, "parse_from_str error".to_string());
+        assert_eq!(
+            err.to_string(),
+            "Time ➤  ParseFromStr: parse_from_str error"
+        )
     }
 
     #[test]

@@ -75,7 +75,7 @@ impl DateTime {
         let datetime =
             match NaiveDateTime::parse_from_str(&datetime.to_string(), &format.to_string()) {
                 Ok(datetime) => datetime,
-                Err(e) => return Err(TimeRSError::Parse(Type::Datetime, e.to_string())),
+                Err(e) => return Err(TimeRSError::ParseFromStr(Type::Datetime, e.to_string())),
             };
         Ok(Self {
             datetime,
@@ -87,7 +87,7 @@ impl DateTime {
         let datetime =
             match NaiveDateTime::parse_from_str(&datetime.to_string(), BASE_DATETIME_FORMAT) {
                 Ok(datetime) => datetime,
-                Err(e) => return Err(TimeRSError::Parse(Type::Datetime, e.to_string())),
+                Err(e) => return Err(TimeRSError::ParseFromStr(Type::Datetime, e.to_string())),
             };
         Ok(Self {
             datetime,
@@ -221,7 +221,7 @@ impl DateTime {
             .inspect(|datetime| {
                 datetime.with_second(0);
             })
-            .ok_or(TimeRSError::InvalidUpdate(
+            .ok_or(TimeRSError::ClearTime(
                 Type::Datetime,
                 "Error while setting start of day".to_string(),
             ))?;
@@ -242,7 +242,7 @@ impl TryFrom<i32> for DateTime {
         let datetime = match chrono::DateTime::from_timestamp(timestamp as i64, 0) {
             Some(datetime) => datetime,
             None => {
-                return Err(TimeRSError::Parse(
+                return Err(TimeRSError::ParseFromTimestamp(
                     Type::Datetime,
                     "Error while parsing timestamp from i32".to_string(),
                 ));
@@ -258,7 +258,7 @@ impl TryFrom<i64> for DateTime {
         let datetime = match chrono::DateTime::from_timestamp(timestamp, 0) {
             Some(datetime) => datetime,
             None => {
-                return Err(TimeRSError::Parse(
+                return Err(TimeRSError::ParseFromTimestamp(
                     Type::Datetime,
                     "Error while parsing timestamp from i64".to_string(),
                 ));

@@ -64,7 +64,7 @@ impl Date {
     pub fn new(date: impl ToString, format: impl ToString) -> TimeResult<Self> {
         let date = match NaiveDate::parse_from_str(&date.to_string(), &format.to_string()) {
             Ok(date) => date,
-            Err(e) => return Err(TimeRSError::Parse(Type::Date, e.to_string())),
+            Err(e) => return Err(TimeRSError::ParseFromStr(Type::Date, e.to_string())),
         };
         Ok(Self {
             date,

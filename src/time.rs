@@ -70,7 +70,7 @@ impl Time {
     pub fn new(time: impl ToString, format: impl ToString) -> TimeResult<Self> {
         let time = match NaiveTime::parse_from_str(&time.to_string(), &format.to_string()) {
             Ok(time) => time,
-            Err(e) => return Err(TimeRSError::Parse(Type::Time, e.to_string())),
+            Err(e) => return Err(TimeRSError::ParseFromStr(Type::Time, e.to_string())),
         };
         Ok(Self {
             time,

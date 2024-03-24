@@ -5,14 +5,14 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::BASE_DATE_FORMAT;
 
-// const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
-
+/// [Serialize] the [NaiveDate] variable from [Date]
 pub fn date_to_str<S: Serializer>(date: &NaiveDate, serializer: S) -> Result<S::Ok, S::Error> {
     date.format(BASE_DATE_FORMAT.get())
         .to_string()
         .serialize(serializer)
 }
 
+/// [Deserialize] the [NaiveDate] variable from [Date]
 pub fn date_from_str<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
 where
     D: Deserializer<'de>,
@@ -21,6 +21,7 @@ where
     NaiveDate::parse_from_str(&date, BASE_DATE_FORMAT.get()).map_err(de::Error::custom)
 }
 
+/// Unit to update [Date]
 #[derive(Debug, Clone)]
 pub enum DateUnit {
     Year,
@@ -28,11 +29,9 @@ pub enum DateUnit {
     Day,
 }
 
-/// Date structure to handle date management
+/// Structure to handle date management
 ///
-/// const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
-///
-/// BASE_DATE_FORMAT is the default format for date
+/// Use [BASE_DATE_FORMAT](static@BASE_DATE_FORMAT) as default format for date
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Date {
     #[serde(serialize_with = "date_to_str", deserialize_with = "date_from_str")]
@@ -61,6 +60,19 @@ impl DerefMut for Date {
 }
 
 impl Date {
+    /// Create a new variable [Date] from the parameters `date` and `format`
+    ///
+    ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let date = Date::new("09/27/2024", "%m/%d/%Y")?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Return an Err(_) if `time` is not formated with `format`
     pub fn new(date: impl ToString, format: impl ToString) -> Result<Self, String> {
         let date = match NaiveDate::parse_from_str(&date.to_string(), &format.to_string()) {
             Ok(date) => date,
@@ -72,19 +84,33 @@ impl Date {
         })
     }
 
+    /// Create a new variable [Date] from the parameter `date` formated with [BASE_DATE_FORMAT](static@BASE_DATE_FORMAT)
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let date = Date::build("2024-09-27")?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Return an Err(_) if the given `date` is not formated with [BASE_DATE_FORMAT](static@BASE_DATE_FORMAT)
     pub fn build(date: impl ToString) -> Result<Self, String> {
         Self::new(date, BASE_DATE_FORMAT.get())
     }
 
+    /// Getter for the date
     pub fn date(&self) -> NaiveDate {
         self.date
     }
 
+    /// Setter for the format
     pub fn format(mut self, format: impl ToString) -> Self {
         self.format = format.to_string();
         self
     }
 
+    /// Function to increase / decrease the date [Date] with [DateUnit]
     pub fn update(&mut self, unit: DateUnit, value: i32) -> Result<(), String> {
         let date = match unit {
             DateUnit::Year if value > 0 => {
@@ -114,10 +140,12 @@ impl Date {
         }
     }
 
+    /// Go to the next [DateUnit] from [Date]
     pub fn next(&mut self, unit: DateUnit) -> Result<(), String> {
         self.update(unit, 1)
     }
 
+    /// Compare the [DateUnit] from [Date] and value ([i32])
     pub fn matches(&self, unit: DateUnit, value: i32) -> bool {
         match unit {
             DateUnit::Year => self.date.year() == value,
@@ -126,18 +154,22 @@ impl Date {
         }
     }
 
+    /// Return the current [Date] from the system
     pub fn today() -> Result<Self, String> {
         Self::build(Local::now().format(BASE_DATE_FORMAT.get()))
     }
 
+    /// Return a [bool] to know if the [Date] is in the future
     pub fn is_in_future(&self) -> Result<bool, String> {
         Ok(self.date > Self::today()?.date)
     }
 
+    /// Elapsed [Duration] between two [Date]
     pub fn elapsed(&self, lhs: &Self) -> Duration {
         self.date.signed_duration_since(lhs.date)
     }
 
+    /// Number of [DateUnit] between two [Date]
     pub fn unit_in_between(&self, unit: DateUnit, lhs: &Self) -> i64 {
         match unit {
             DateUnit::Year => self.date.year() as i64 - lhs.date.year() as i64,

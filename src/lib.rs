@@ -1,3 +1,5 @@
+#![allow(rustdoc::private_intra_doc_links)]
+
 use std::{
     ops::Deref,
     sync::{Arc, RwLock},
@@ -37,6 +39,7 @@ impl BASE_DATETIME_FORMAT {
     }
 }
 
+/// Builder to set the default date, time, and datetime format
 #[derive(Debug, Clone, Default)]
 pub struct TimeBuilder {
     date_format: Option<&'static str>,
@@ -45,25 +48,30 @@ pub struct TimeBuilder {
 }
 
 impl TimeBuilder {
+    /// Create a new builder
     pub fn builder() -> Self {
         Self::default()
     }
 
+    /// Setter for the date format
     pub fn date_format(&mut self, date_format: &'static str) -> &mut Self {
         self.date_format = Some(date_format);
         self
     }
 
+    /// Setter for the time format
     pub fn time_format(&mut self, time_format: &'static str) -> &mut Self {
         self.time_format = Some(time_format);
         self
     }
 
+    /// Setter for the datetime format
     pub fn datetime_format(&mut self, datetime_format: &'static str) -> &mut Self {
         self.datetime_format = Some(datetime_format);
         self
     }
 
+    /// Consume the builder and set the default date, time, and datetime format
     pub fn build(&self) {
         match self.date_format {
             Some(date_format) => *BASE_DATE_FORMAT.write().unwrap() = date_format,

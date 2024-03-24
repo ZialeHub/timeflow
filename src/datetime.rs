@@ -5,8 +5,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::BASE_DATETIME_FORMAT;
 
-// const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
-
+/// [Serialize] the [NaiveDateTime] variable from [DateTime]
 pub fn datetime_to_str<S: Serializer>(
     datetime: &NaiveDateTime,
     serializer: S,
@@ -17,6 +16,7 @@ pub fn datetime_to_str<S: Serializer>(
         .serialize(serializer)
 }
 
+/// [Deserialize] the [NaiveDateTime] variable from [DateTime]
 pub fn datetime_from_str<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
 where
     D: Deserializer<'de>,
@@ -25,6 +25,7 @@ where
     NaiveDateTime::parse_from_str(&date, &BASE_DATETIME_FORMAT.get()).map_err(de::Error::custom)
 }
 
+/// Unit to update [DateTime]
 #[derive(Debug, Clone)]
 pub enum DateTimeUnit {
     Year,
@@ -35,11 +36,9 @@ pub enum DateTimeUnit {
     Second,
 }
 
-/// DateTime structure to handle datetime management
+/// Structure to handle datetime management
 ///
-/// const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
-///
-/// BASE_DATETIME_FORMAT is the default format for datetime
+/// Use [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT) as default format for datetime
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DateTime {
     #[serde(
@@ -71,6 +70,19 @@ impl DerefMut for DateTime {
 }
 
 impl DateTime {
+    /// Create a new variable [DateTime] from the parameters `datetime` and `format`
+    ///
+    ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let datetime = DateTime::new("05/17/2024T09_27_00", "%m/%d/%YT%H_%M_%S")?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Return an Err(_) if `datetime` is not formated with `format`
     pub fn new(datetime: impl ToString, format: impl ToString) -> Result<Self, String> {
         let datetime =
             match NaiveDateTime::parse_from_str(&datetime.to_string(), &format.to_string()) {
@@ -83,6 +95,17 @@ impl DateTime {
         })
     }
 
+    /// Create a new variable [DateTime] from the parameter `datetime` formated with [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT)
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let datetime = DateTime::build("2023-05-17 09:05:12")?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Return an Err(_) if the given `datetime` is not formated with [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT)
     pub fn build(datetime: impl ToString) -> Result<Self, String> {
         let datetime =
             match NaiveDateTime::parse_from_str(&datetime.to_string(), &BASE_DATETIME_FORMAT.get())
@@ -101,15 +124,18 @@ impl DateTime {
         })
     }
 
+    /// Getter for the datetime
     pub fn datetime(&self) -> NaiveDateTime {
         self.datetime
     }
 
+    /// Setter for the format
     pub fn format(mut self, format: &str) -> Self {
         self.format = format.to_string();
         self
     }
 
+    /// Function to increase / decrease the datetime [DateTime] with [DateTimeUnit]
     pub fn update(&mut self, unit: DateTimeUnit, value: i32) -> Result<(), String> {
         let datetime = match unit {
             DateTimeUnit::Year if value > 0 => self
@@ -152,10 +178,12 @@ impl DateTime {
         }
     }
 
+    /// Go to the next [DateTimeUnit] from [DateTime]
     pub fn next(&mut self, unit: DateTimeUnit) -> Result<(), String> {
         self.update(unit, 1)
     }
 
+    /// Compare the [DateTimeUnit] from [DateTime] and value ([u32])
     pub fn matches(&self, unit: DateTimeUnit, value: u32) -> bool {
         match unit {
             DateTimeUnit::Year => self.datetime.year() == value as i32,
@@ -167,19 +195,23 @@ impl DateTime {
         }
     }
 
+    /// Return the current [DateTime] from the system
     pub fn now() -> Result<Self, String> {
         Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))
     }
 
+    /// Return a [bool] to know if the [DateTime] is in the future
     pub fn is_in_future(&self) -> Result<bool, String> {
         let now = Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))?;
         Ok(self.datetime > now.datetime)
     }
 
+    /// Elapsed [Duration] between two [DateTime]
     pub fn elapsed(&self, lhs: &Self) -> Duration {
         self.datetime.signed_duration_since(lhs.datetime)
     }
 
+    /// Number of [DateTimeUnit] between two [DateTime]
     pub fn unit_in_between(&self, unit: DateTimeUnit, lhs: &Self) -> i32 {
         match unit {
             DateTimeUnit::Year => self.datetime.year() - lhs.datetime.year(),
@@ -213,10 +245,12 @@ impl DateTime {
         .abs()
     }
 
+    /// Return the timestamp from the [DateTime]
     pub fn timestamp(&self) -> i64 {
         self.datetime.and_utc().timestamp()
     }
 
+    /// Clear the time from the [DateTime]
     pub fn clear_time(&self) -> Result<Self, String> {
         let datetime = self
             .datetime

@@ -3,14 +3,16 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Datelike, Days, Duration, Local, Months, NaiveDate, NaiveDateTime};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
+pub const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
 
+/// [Serialize] the [NaiveDate] variable from [Date]
 pub fn date_to_str<S: Serializer>(date: &NaiveDate, serializer: S) -> Result<S::Ok, S::Error> {
     date.format(BASE_DATE_FORMAT)
         .to_string()
         .serialize(serializer)
 }
 
+/// [Deserialize] the [NaiveDate] variable from [Date]
 pub fn date_from_str<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
 where
     D: Deserializer<'de>,
@@ -19,20 +21,19 @@ where
     NaiveDate::parse_from_str(&date, BASE_DATE_FORMAT).map_err(de::Error::custom)
 }
 
+/// Unit to update [Date]
 #[derive(Debug, Clone)]
-enum DateUnit {
+pub enum DateUnit {
     Year,
     Month,
     Day,
 }
 
-/// Date structure to handle date management
+/// Structure to handle date management
 ///
-/// const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
-///
-/// BASE_DATE_FORMAT is the default format for date
+/// Use [BASE_DATE_FORMAT] as default format for date
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Date {
+pub struct Date {
     #[serde(serialize_with = "date_to_str", deserialize_with = "date_from_str")]
     pub date: NaiveDate,
     pub format: String,

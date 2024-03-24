@@ -29,7 +29,7 @@ pub enum TimeUnit {
     Second,
 }
 
-// Structure to handle time management
+/// Structure to handle time management
 ///
 /// Use [BASE_TIME_FORMAT] as default format for time
 #[derive(Debug, Clone, Serialize, Deserialize)]

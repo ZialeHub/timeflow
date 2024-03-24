@@ -3,8 +3,9 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
+pub const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
+/// [Serialize] the [NaiveDateTime] variable from [DateTime]
 pub fn datetime_to_str<S: Serializer>(
     datetime: &NaiveDateTime,
     serializer: S,
@@ -15,6 +16,7 @@ pub fn datetime_to_str<S: Serializer>(
         .serialize(serializer)
 }
 
+/// [Deserialize] the [NaiveDateTime] variable from [DateTime]
 pub fn datetime_from_str<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
 where
     D: Deserializer<'de>,
@@ -23,6 +25,7 @@ where
     NaiveDateTime::parse_from_str(&date, BASE_DATETIME_FORMAT).map_err(de::Error::custom)
 }
 
+/// Unit to update [DateTime]
 #[derive(Debug, Clone)]
 pub enum DateTimeUnit {
     Year,
@@ -33,11 +36,9 @@ pub enum DateTimeUnit {
     Second,
 }
 
-/// DateTime structure to handle datetime management
+/// Structure to handle datetime management
 ///
-/// const BASE_DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
-///
-/// BASE_DATETIME_FORMAT is the default format for datetime
+/// Use [BASE_DATETIME_FORMAT] as default format for datetime
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DateTime {
     #[serde(

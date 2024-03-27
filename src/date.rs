@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Datelike, Days, Duration, Local, Months, NaiveDate, NaiveDateTime};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{TimeRSError, TimeResult, Type};
+use crate::error::{DateError, ErrorContext, SpanError};
 
 const BASE_DATE_FORMAT: &str = "%Y-%m-%d";
 
@@ -22,7 +22,7 @@ where
 }
 
 #[derive(Debug, Clone)]
-enum DateUnit {
+pub enum DateUnit {
     Year,
     Month,
     Day,
@@ -34,7 +34,7 @@ enum DateUnit {
 ///
 /// BASE_DATE_FORMAT is the default format for date
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Date {
+pub struct Date {
     #[serde(serialize_with = "date_to_str", deserialize_with = "date_from_str")]
     pub date: NaiveDate,
     pub format: String,
@@ -61,10 +61,10 @@ impl DerefMut for Date {
 }
 
 impl Date {
-    pub fn new(date: impl ToString, format: impl ToString) -> TimeResult<Self> {
+    pub fn new(date: impl ToString, format: impl ToString) -> Result<Self, SpanError> {
         let date = match NaiveDate::parse_from_str(&date.to_string(), &format.to_string()) {
             Ok(date) => date,
-            Err(e) => return Err(TimeRSError::ParseFromStr(Type::Date, e.to_string())),
+            Err(e) => return Err(SpanError::ParseFromStr(e)).err_ctx(DateError),
         };
         Ok(Self {
             date,
@@ -72,7 +72,7 @@ impl Date {
         })
     }
 
-    pub fn build(date: impl ToString) -> TimeResult<Self> {
+    pub fn build(date: impl ToString) -> Result<Self, SpanError> {
         Self::new(date, BASE_DATE_FORMAT)
     }
 
@@ -85,7 +85,7 @@ impl Date {
         self
     }
 
-    pub fn update(&mut self, unit: DateUnit, value: i32) -> TimeResult<()> {
+    pub fn update(&mut self, unit: DateUnit, value: i32) -> Result<(), SpanError> {
         let date = match unit {
             DateUnit::Year if value > 0 => {
                 self.date.checked_add_months(Months::new(value as u32 * 12))
@@ -107,14 +107,15 @@ impl Date {
                 self.date = date;
                 Ok(())
             }
-            None => Err(TimeRSError::InvalidUpdate(
-                Type::Date,
-                format!("Cannot Add/Remove {} {:?} to/from {}", value, unit, self),
-            )),
+            None => Err(SpanError::InvalidUpdate(format!(
+                "Cannot Add/Remove {} {:?} to/from {}",
+                value, unit, self
+            )))
+            .err_ctx(DateError),
         }
     }
 
-    pub fn next(&mut self, unit: DateUnit) -> TimeResult<()> {
+    pub fn next(&mut self, unit: DateUnit) -> Result<(), SpanError> {
         self.update(unit, 1)
     }
 
@@ -126,11 +127,11 @@ impl Date {
         }
     }
 
-    pub fn today() -> TimeResult<Self> {
+    pub fn today() -> Result<Self, SpanError> {
         Self::build(Local::now().format(BASE_DATE_FORMAT))
     }
 
-    pub fn is_in_future(&self) -> TimeResult<bool> {
+    pub fn is_in_future(&self) -> Result<bool, SpanError> {
         Ok(self.date > Self::today()?.date)
     }
 
@@ -166,28 +167,28 @@ impl From<NaiveDate> for Date {
 }
 
 impl TryFrom<(String, String)> for Date {
-    type Error = TimeRSError;
+    type Error = SpanError;
     fn try_from((date, format): (String, String)) -> Result<Self, Self::Error> {
         Self::new(date, format)
     }
 }
 
 impl TryFrom<(&str, &str)> for Date {
-    type Error = TimeRSError;
+    type Error = SpanError;
     fn try_from((date, format): (&str, &str)) -> Result<Self, Self::Error> {
         Self::new(date, format)
     }
 }
 
 impl TryFrom<String> for Date {
-    type Error = TimeRSError;
+    type Error = SpanError;
     fn try_from(date: String) -> Result<Self, Self::Error> {
         Self::new(date, BASE_DATE_FORMAT)
     }
 }
 
 impl TryFrom<&str> for Date {
-    type Error = TimeRSError;
+    type Error = SpanError;
     fn try_from(date: &str) -> Result<Self, Self::Error> {
         Self::new(date, BASE_DATE_FORMAT)
     }
@@ -198,21 +199,21 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn test_date_add_overflow() -> TimeResult<()> {
+    fn test_date_add_overflow() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Day, i32::MAX);
         assert_eq!(
             new_date,
-            Err(TimeRSError::InvalidUpdate(
-                Type::Date,
+            Err(SpanError::InvalidUpdate(
                 "Cannot Add/Remove 2147483647 Day to/from 2023-10-09".to_string()
             ))
+            .err_ctx(DateError)
         );
         Ok(())
     }
 
     #[test]
-    fn test_date_add_one_year() -> TimeResult<()> {
+    fn test_date_add_one_year() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Year, 1);
         assert_eq!(new_date, Ok(()));
@@ -221,7 +222,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_remove_one_year() -> TimeResult<()> {
+    fn test_date_remove_one_year() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Year, -1);
         assert_eq!(new_date, Ok(()));
@@ -230,7 +231,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_add_one_month() -> TimeResult<()> {
+    fn test_date_add_one_month() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Month, 1);
         assert_eq!(new_date, Ok(()));
@@ -239,7 +240,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_remove_one_month() -> TimeResult<()> {
+    fn test_date_remove_one_month() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Month, -1);
         assert_eq!(new_date, Ok(()));
@@ -248,7 +249,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_add_one_day() -> TimeResult<()> {
+    fn test_date_add_one_day() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Day, 1);
         assert_eq!(new_date, Ok(()));
@@ -257,7 +258,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_remove_one_day() -> TimeResult<()> {
+    fn test_date_remove_one_day() -> Result<(), SpanError> {
         let mut date = Date::build("2023-10-09")?;
         let new_date = date.update(DateUnit::Day, -1);
         assert_eq!(new_date, Ok(()));
@@ -266,7 +267,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_serialize() -> TimeResult<()> {
+    fn test_date_serialize() -> Result<(), SpanError> {
         let date = Date::build("2023-10-09")?;
         let Ok(serialized) = serde_json::to_string(&date) else {
             panic!("Error while serializing date");
@@ -279,7 +280,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_deserialize() -> TimeResult<()> {
+    fn test_date_deserialize() -> Result<(), SpanError> {
         let serialized = "{\"date\":\"2023-10-09\",\"format\":\"%Y-%m-%d\"}".to_string();
         let Ok(date) = serde_json::from_str::<Date>(&serialized) else {
             panic!("Error while deserializing date");
@@ -290,7 +291,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_serialize_format() -> TimeResult<()> {
+    fn test_date_serialize_format() -> Result<(), SpanError> {
         let date = Date::build("2023-10-09")?.format("%d/%m/%Y");
         let Ok(serialized) = serde_json::to_string(&date) else {
             panic!("Error while serializing date");
@@ -303,7 +304,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_date_deserialize_format() -> TimeResult<()> {
+    fn test_date_deserialize_format() -> Result<(), SpanError> {
         let serialized = "{\"date\":\"2023-10-09\",\"format\":\"%d/%m/%Y\"}".to_string();
         let Ok(date) = serde_json::from_str::<Date>(&serialized) else {
             panic!("Error while deserializing date");

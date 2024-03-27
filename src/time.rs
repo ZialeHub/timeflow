@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Local, NaiveDateTime, NaiveTime, TimeDelta, Timelike};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{TimeRSError, TimeResult, Type};
+use crate::error::{ErrorContext, SpanError, TimeError};
 
 const BASE_TIME_FORMAT: &str = "%H:%M:%S";
 
@@ -22,7 +22,7 @@ where
 }
 
 #[derive(Debug, Clone)]
-enum TimeUnit {
+pub enum TimeUnit {
     Hour,
     Minute,
     Second,
@@ -34,7 +34,7 @@ enum TimeUnit {
 ///
 /// BASE_TIME_FORMAT is the default format for time
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Time {
+pub struct Time {
     #[serde(serialize_with = "time_to_str", deserialize_with = "time_from_str")]
     pub time: NaiveTime,
     pub format: String,
@@ -67,10 +67,10 @@ impl Default for Time {
 }
 
 impl Time {
-    pub fn new(time: impl ToString, format: impl ToString) -> TimeResult<Self> {
+    pub fn new(time: impl ToString, format: impl ToString) -> Result<Self, SpanError> {
         let time = match NaiveTime::parse_from_str(&time.to_string(), &format.to_string()) {
             Ok(time) => time,
-            Err(e) => return Err(TimeRSError::ParseFromStr(Type::Time, e.to_string())),
+            Err(e) => return Err(SpanError::ParseFromStr(e)).err_ctx(TimeError),
         };
         Ok(Self {
             time,
@@ -78,7 +78,7 @@ impl Time {
         })
     }
 
-    pub fn build(time: impl ToString) -> TimeResult<Self> {
+    pub fn build(time: impl ToString) -> Result<Self, SpanError> {
         Self::new(time, BASE_TIME_FORMAT)
     }
 
@@ -91,7 +91,7 @@ impl Time {
         self
     }
 
-    pub fn update(&mut self, unit: TimeUnit, value: i32) -> TimeResult<()> {
+    pub fn update(&mut self, unit: TimeUnit, value: i32) -> Result<(), SpanError> {
         let delta_time = match unit {
             TimeUnit::Hour => TimeDelta::new(value as i64 * 60 * 60, 0),
             TimeUnit::Minute => TimeDelta::new(value as i64 * 60, 0),
@@ -102,18 +102,19 @@ impl Time {
                 self.time += delta_time;
                 Ok(())
             }
-            None => Err(TimeRSError::InvalidUpdate(
-                Type::Time,
-                format!("Cannot Add/Remove {} {:?} to/from {}", value, unit, self),
-            )),
+            None => Err(SpanError::InvalidUpdate(format!(
+                "Cannot Add/Remove {} {:?} to/from {}",
+                value, unit, self
+            )))
+            .err_ctx(TimeError),
         }
     }
 
-    pub fn next(&mut self, unit: TimeUnit) -> TimeResult<()> {
+    pub fn next(&mut self, unit: TimeUnit) -> Result<(), SpanError> {
         self.update(unit, 1)
     }
 
-    pub fn matches(&self, unit: TimeUnit, value: u32) -> TimeResult<bool> {
+    pub fn matches(&self, unit: TimeUnit, value: u32) -> Result<bool, SpanError> {
         match unit {
             TimeUnit::Hour => Ok(self.time.hour() == value),
             TimeUnit::Minute => Ok(self.time.minute() == value),
@@ -121,7 +122,7 @@ impl Time {
         }
     }
 
-    pub fn now() -> TimeResult<Self> {
+    pub fn now() -> Result<Self, SpanError> {
         Self::build(Local::now().format(BASE_TIME_FORMAT))
     }
 
@@ -133,7 +134,7 @@ impl Time {
         }
     }
 
-    pub fn is_in_future(&self) -> TimeResult<bool> {
+    pub fn is_in_future(&self) -> Result<bool, SpanError> {
         Ok(self.time > Self::now()?.time)
     }
 
@@ -169,7 +170,7 @@ impl From<NaiveTime> for Time {
 }
 
 impl TryFrom<(String, String)> for Time {
-    type Error = TimeRSError;
+    type Error = SpanError;
 
     fn try_from((time, format): (String, String)) -> Result<Self, Self::Error> {
         Self::new(time, format)
@@ -177,7 +178,7 @@ impl TryFrom<(String, String)> for Time {
 }
 
 impl TryFrom<(&str, &str)> for Time {
-    type Error = TimeRSError;
+    type Error = SpanError;
 
     fn try_from((time, format): (&str, &str)) -> Result<Self, Self::Error> {
         Self::new(time, format)
@@ -185,7 +186,7 @@ impl TryFrom<(&str, &str)> for Time {
 }
 
 impl TryFrom<String> for Time {
-    type Error = TimeRSError;
+    type Error = SpanError;
 
     fn try_from(time: String) -> Result<Self, Self::Error> {
         Self::build(time)
@@ -193,7 +194,7 @@ impl TryFrom<String> for Time {
 }
 
 impl TryFrom<&str> for Time {
-    type Error = TimeRSError;
+    type Error = SpanError;
 
     fn try_from(time: &str) -> Result<Self, Self::Error> {
         Self::build(time)
@@ -205,7 +206,7 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn test_time_add_overflow() -> TimeResult<()> {
+    fn test_time_add_overflow() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Hour, i32::MIN);
         assert_eq!(new_time, Ok(()));
@@ -213,7 +214,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_add_one_hour() -> TimeResult<()> {
+    fn test_time_add_one_hour() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Hour, 1);
         assert_eq!(new_time, Ok(()));
@@ -222,7 +223,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_remove_one_hour() -> TimeResult<()> {
+    fn test_time_remove_one_hour() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Hour, -1);
         assert_eq!(new_time, Ok(()));
@@ -231,7 +232,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_add_one_minute() -> TimeResult<()> {
+    fn test_time_add_one_minute() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Minute, 1);
         assert_eq!(new_time, Ok(()));
@@ -240,7 +241,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_remove_one_minute() -> TimeResult<()> {
+    fn test_time_remove_one_minute() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Minute, -1);
         assert_eq!(new_time, Ok(()));
@@ -249,7 +250,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_add_one_second() -> TimeResult<()> {
+    fn test_time_add_one_second() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Second, 1);
         assert_eq!(new_time, Ok(()));
@@ -258,7 +259,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_remove_one_second() -> TimeResult<()> {
+    fn test_time_remove_one_second() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Second, -1);
         assert_eq!(new_time, Ok(()));
@@ -267,7 +268,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_serialize() -> TimeResult<()> {
+    fn test_time_serialize() -> Result<(), SpanError> {
         let time = Time::build("12:21:46")?;
         let Ok(serialized) = serde_json::to_string(&time) else {
             panic!("Error while serializing time");
@@ -280,7 +281,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_deserialize() -> TimeResult<()> {
+    fn test_time_deserialize() -> Result<(), SpanError> {
         let serialized = "{\"time\":\"12:21:46\",\"format\":\"%H:%M:%S\"}".to_string();
         let Ok(time) = serde_json::from_str::<Time>(&serialized) else {
             panic!("Error while deserializing time");
@@ -291,7 +292,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_serialize_format() -> TimeResult<()> {
+    fn test_time_serialize_format() -> Result<(), SpanError> {
         let time = Time::build("12:21:46")?.format("T%H_%M_%S");
         let Ok(serialized) = serde_json::to_string(&time) else {
             panic!("Error while serializing time");
@@ -304,7 +305,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_deserialize_format() -> TimeResult<()> {
+    fn test_time_deserialize_format() -> Result<(), SpanError> {
         let serialized = "{\"time\":\"12:21:46\",\"format\":\"T%H_%M_%S\"}".to_string();
         let Ok(time) = serde_json::from_str::<Time>(&serialized) else {
             panic!("Error while deserializing time");

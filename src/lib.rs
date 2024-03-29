@@ -7,8 +7,11 @@ use std::{
 
 use lazy_static::lazy_static;
 
+pub mod builder;
 pub mod date;
 pub mod datetime;
+pub mod error;
+pub mod prelude;
 pub mod time;
 
 lazy_static! {
@@ -39,62 +42,99 @@ impl BASE_DATETIME_FORMAT {
     }
 }
 
-/// Builder to set the default date, time, and datetime format
-#[derive(Debug, Clone, Default)]
-pub struct TimeBuilder {
-    date_format: Option<&'static str>,
-    time_format: Option<&'static str>,
-    datetime_format: Option<&'static str>,
-}
-
-impl TimeBuilder {
-    /// Create a new builder
-    pub fn builder() -> Self {
-        Self::default()
-    }
-
-    /// Setter for the date format
-    pub fn date_format(&mut self, date_format: &'static str) -> &mut Self {
-        self.date_format = Some(date_format);
-        self
-    }
-
-    /// Setter for the time format
-    pub fn time_format(&mut self, time_format: &'static str) -> &mut Self {
-        self.time_format = Some(time_format);
-        self
-    }
-
-    /// Setter for the datetime format
-    pub fn datetime_format(&mut self, datetime_format: &'static str) -> &mut Self {
-        self.datetime_format = Some(datetime_format);
-        self
-    }
-
-    /// Consume the builder and set the default date, time, and datetime format
-    pub fn build(&self) {
-        match self.date_format {
-            Some(date_format) => *BASE_DATE_FORMAT.write().unwrap() = date_format,
-            None => *BASE_DATE_FORMAT.write().unwrap() = "%Y-%m-%d",
-        }
-        match self.time_format {
-            Some(time_format) => *BASE_TIME_FORMAT.write().unwrap() = time_format,
-            None => *BASE_TIME_FORMAT.write().unwrap() = "%H:%M:%S",
-        }
-        match self.datetime_format {
-            Some(datetime_format) => *BASE_DATETIME_FORMAT.write().unwrap() = Some(datetime_format),
-            None => *BASE_DATETIME_FORMAT.write().unwrap() = None,
-        }
-    }
-}
-
 #[cfg(test)]
-mod tests {
+pub mod test {
     use super::*;
+    use prelude::*;
 
     #[test]
-    fn test_builder_format_default() -> Result<(), String> {
-        TimeBuilder::builder().build();
+    fn test_log_error_datetime_parse() {
+        let datetime = DateTime::build("09-10-2023 00_00_00");
+        let _ = datetime.inspect_err(|e| {
+            assert_eq!(
+                e.to_string(),
+                "DateTime ➤  ParseFromStr: input contains invalid characters"
+            )
+        });
+    }
+
+    #[test]
+    fn test_log_error_datetime_parse_timestamp() {
+        let err = SpanError::DateTime(
+            Box::new(SpanError::ParseFromTimestamp(
+                "parse_from_timestamp error".to_string(),
+            )),
+            DateTimeError,
+        );
+        assert_eq!(
+            err.to_string(),
+            "DateTime ➤  ParseFromTimestamp: parse_from_timestamp error"
+        )
+    }
+
+    #[test]
+    fn test_log_error_datetime_invalid_update() {
+        let err = SpanError::DateTime(
+            Box::new(SpanError::InvalidUpdate(
+                "Cannot add x Day to datetime error".to_string(),
+            )),
+            DateTimeError,
+        );
+        assert_eq!(
+            err.to_string(),
+            "DateTime ➤  InvalidUpdate: Cannot add x Day to datetime error"
+        )
+    }
+
+    #[test]
+    fn test_log_error_date_parse() {
+        let datetime = Date::build("10-31-2023");
+        let _ = datetime.inspect_err(|e| {
+            assert_eq!(e.to_string(), "Date ➤  ParseFromStr: input is out of range")
+        });
+    }
+
+    #[test]
+    fn test_log_error_date_invalid_update() {
+        let err = SpanError::Date(
+            Box::new(SpanError::InvalidUpdate(
+                "Cannot add x Month to date error".to_string(),
+            )),
+            DateError,
+        );
+        assert_eq!(
+            err.to_string(),
+            "Date ➤  InvalidUpdate: Cannot add x Month to date error"
+        )
+    }
+
+    #[test]
+    fn test_log_error_time_parse() {
+        let time = Time::build("00_00_00");
+        let _ = time.inspect_err(|e| {
+            assert_eq!(
+                e.to_string(),
+                "Time ➤  ParseFromStr: input contains invalid characters"
+            )
+        });
+    }
+
+    #[test]
+    fn test_log_error_time_invalid_update() {
+        let err = SpanError::Time(
+            Box::new(SpanError::InvalidUpdate(
+                "Cannot add x Second to time error".to_string(),
+            )),
+            TimeError,
+        );
+        assert_eq!(
+            err.to_string(),
+            "Time ➤  InvalidUpdate: Cannot add x Second to time error"
+        )
+    }
+    #[test]
+    fn test_builder_format_default() -> Result<(), SpanError> {
+        SpanBuilder::builder().build();
         let datetime = datetime::DateTime::build("2023-01-01 12:00:00")?;
         assert_eq!(datetime.to_string(), "2023-01-01 12:00:00");
         let date = date::Date::build("2023-01-01")?;
@@ -108,8 +148,8 @@ mod tests {
     /// Tests are running in parallel, and changing the global state might affect other tests
     #[test]
     #[ignore]
-    fn test_builder_format_build() -> Result<(), String> {
-        TimeBuilder::builder()
+    fn test_builder_format_build() -> Result<(), SpanError> {
+        SpanBuilder::builder()
             .datetime_format("%d/%m/%YT%H_%M_%S")
             .date_format("%d/%m/%Y")
             .time_format("%H_%M_%S")
@@ -122,8 +162,8 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_builder_format_build_ignored() -> Result<(), String> {
-        TimeBuilder::builder()
+    fn test_builder_format_build_ignored() -> Result<(), SpanError> {
+        SpanBuilder::builder()
             .datetime_format("%d/%m/%YT%H_%M_%S")
             .date_format("%d/%m/%Y")
             .time_format("%H_%M_%S")
@@ -136,8 +176,8 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_builder_format_build_datetime_skipped() -> Result<(), String> {
-        TimeBuilder::builder()
+    fn test_builder_format_build_datetime_skipped() -> Result<(), SpanError> {
+        SpanBuilder::builder()
             .date_format("%d/%m/%Y")
             .time_format("%H_%M_%S")
             .build();

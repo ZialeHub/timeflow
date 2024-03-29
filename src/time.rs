@@ -3,7 +3,10 @@ use std::ops::{Deref, DerefMut};
 use chrono::{Local, NaiveDateTime, NaiveTime, TimeDelta, Timelike};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::BASE_TIME_FORMAT;
+use crate::{
+    error::{ErrorContext, SpanError, TimeError},
+    BASE_TIME_FORMAT,
+};
 
 /// [Serialize] the [NaiveTime] variable from [Time]
 pub fn time_to_str<S: Serializer>(time: &NaiveTime, serializer: S) -> Result<S::Ok, S::Error> {
@@ -81,10 +84,10 @@ impl Time {
     /// # Errors
     ///
     /// Return an Err(_) if `time` is not formated with `format`
-    pub fn new(time: impl ToString, format: impl ToString) -> Result<Self, String> {
+    pub fn new(time: impl ToString, format: impl ToString) -> Result<Self, SpanError> {
         let time = match NaiveTime::parse_from_str(&time.to_string(), &format.to_string()) {
             Ok(time) => time,
-            Err(e) => return Err(format!("Error Time new: {e}")),
+            Err(e) => return Err(SpanError::ParseFromStr(e)).err_ctx(TimeError),
         };
         Ok(Self {
             time,
@@ -106,7 +109,7 @@ impl Time {
     /// # Errors
     ///
     /// Return an Err(_) if the given `time` is not formated with [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT)
-    pub fn build(time: impl ToString) -> Result<Self, String> {
+    pub fn build(time: impl ToString) -> Result<Self, SpanError> {
         Self::new(time, BASE_TIME_FORMAT.get())
     }
 
@@ -122,7 +125,7 @@ impl Time {
     }
 
     /// Function to increase / decrease the time [Time] with [TimeUnit]
-    pub fn update(&mut self, unit: TimeUnit, value: i32) -> Result<(), String> {
+    pub fn update(&mut self, unit: TimeUnit, value: i32) -> Result<(), SpanError> {
         let delta_time = match unit {
             TimeUnit::Hour => TimeDelta::new(value as i64 * 60 * 60, 0),
             TimeUnit::Minute => TimeDelta::new(value as i64 * 60, 0),
@@ -133,29 +136,30 @@ impl Time {
                 self.time += delta_time;
                 Ok(())
             }
-            None => Err(format!(
+            None => Err(SpanError::InvalidUpdate(format!(
                 "Cannot Add/Remove {} {:?} to/from {}",
                 value, unit, self
-            )),
+            )))
+            .err_ctx(TimeError),
         }
     }
 
     /// Go to the next [TimeUnit] from [Time]
-    pub fn next(&mut self, unit: TimeUnit) -> Result<(), String> {
+    pub fn next(&mut self, unit: TimeUnit) -> Result<(), SpanError> {
         self.update(unit, 1)
     }
 
     /// Compare the [TimeUnit] from [Time] and value ([u32])
-    pub fn matches(&self, unit: TimeUnit, value: u32) -> bool {
-        match unit {
+    pub fn matches(&self, unit: TimeUnit, value: u32) -> Result<bool, SpanError> {
+        Ok(match unit {
             TimeUnit::Hour => self.time.hour() == value,
             TimeUnit::Minute => self.time.minute() == value,
             TimeUnit::Second => self.time.second() == value,
-        }
+        })
     }
 
     /// Return the current [Time] from the system
-    pub fn now() -> Result<Self, String> {
+    pub fn now() -> Result<Self, SpanError> {
         Self::build(Local::now().format(BASE_TIME_FORMAT.get()))
     }
 
@@ -176,7 +180,7 @@ impl Time {
     }
 
     /// Return a [bool] to know if the [Time] is in the future
-    pub fn is_in_future(&self) -> Result<bool, String> {
+    pub fn is_in_future(&self) -> Result<bool, SpanError> {
         Ok(self.time > Self::now()?.time)
     }
 
@@ -214,7 +218,7 @@ impl From<NaiveTime> for Time {
 }
 
 impl TryFrom<(String, String)> for Time {
-    type Error = String;
+    type Error = SpanError;
 
     fn try_from((time, format): (String, String)) -> Result<Self, Self::Error> {
         Self::new(time, format)
@@ -222,7 +226,7 @@ impl TryFrom<(String, String)> for Time {
 }
 
 impl TryFrom<(&str, &str)> for Time {
-    type Error = String;
+    type Error = SpanError;
 
     fn try_from((time, format): (&str, &str)) -> Result<Self, Self::Error> {
         Self::new(time, format)
@@ -230,7 +234,7 @@ impl TryFrom<(&str, &str)> for Time {
 }
 
 impl TryFrom<String> for Time {
-    type Error = String;
+    type Error = SpanError;
 
     fn try_from(time: String) -> Result<Self, Self::Error> {
         Self::build(time)
@@ -238,7 +242,7 @@ impl TryFrom<String> for Time {
 }
 
 impl TryFrom<&str> for Time {
-    type Error = String;
+    type Error = SpanError;
 
     fn try_from(time: &str) -> Result<Self, Self::Error> {
         Self::build(time)
@@ -250,7 +254,7 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn test_time_add_overflow() -> Result<(), String> {
+    fn test_time_add_overflow() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Hour, i32::MIN);
         assert_eq!(new_time, Ok(()));
@@ -258,7 +262,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_add_one_hour() -> Result<(), String> {
+    fn test_time_add_one_hour() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Hour, 1);
         assert_eq!(new_time, Ok(()));
@@ -267,7 +271,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_remove_one_hour() -> Result<(), String> {
+    fn test_time_remove_one_hour() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Hour, -1);
         assert_eq!(new_time, Ok(()));
@@ -276,7 +280,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_add_one_minute() -> Result<(), String> {
+    fn test_time_add_one_minute() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Minute, 1);
         assert_eq!(new_time, Ok(()));
@@ -285,7 +289,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_remove_one_minute() -> Result<(), String> {
+    fn test_time_remove_one_minute() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Minute, -1);
         assert_eq!(new_time, Ok(()));
@@ -294,7 +298,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_add_one_second() -> Result<(), String> {
+    fn test_time_add_one_second() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Second, 1);
         assert_eq!(new_time, Ok(()));
@@ -303,7 +307,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_remove_one_second() -> Result<(), String> {
+    fn test_time_remove_one_second() -> Result<(), SpanError> {
         let mut time = Time::build("00:00:00")?;
         let new_time = time.update(TimeUnit::Second, -1);
         assert_eq!(new_time, Ok(()));
@@ -312,10 +316,10 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_serialize() -> Result<(), String> {
+    fn test_time_serialize() -> Result<(), SpanError> {
         let time = Time::build("12:21:46")?;
         let Ok(serialized) = serde_json::to_string(&time) else {
-            return Err("Error while serializing time".to_string());
+            panic!("Error while serializing time");
         };
         assert_eq!(
             serialized,
@@ -325,10 +329,10 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_deserialize() -> Result<(), String> {
+    fn test_time_deserialize() -> Result<(), SpanError> {
         let serialized = "{\"time\":\"12:21:46\",\"format\":\"%H:%M:%S\"}".to_string();
         let Ok(time) = serde_json::from_str::<Time>(&serialized) else {
-            return Err("Error while deserializing time".to_string());
+            panic!("Error while deserializing time");
         };
         assert_eq!(time.to_string(), "12:21:46".to_string());
         assert_eq!(time.format, BASE_TIME_FORMAT.get().to_string());
@@ -336,10 +340,10 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_serialize_format() -> Result<(), String> {
+    fn test_time_serialize_format() -> Result<(), SpanError> {
         let time = Time::build("12:21:46")?.format("T%H_%M_%S");
         let Ok(serialized) = serde_json::to_string(&time) else {
-            return Err("Error while serializing time".to_string());
+            panic!("Error while serializing time");
         };
         assert_eq!(
             serialized,
@@ -349,10 +353,10 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_deserialize_format() -> Result<(), String> {
+    fn test_time_deserialize_format() -> Result<(), SpanError> {
         let serialized = "{\"time\":\"12:21:46\",\"format\":\"T%H_%M_%S\"}".to_string();
         let Ok(time) = serde_json::from_str::<Time>(&serialized) else {
-            return Err("Error while deserializing time".to_string());
+            panic!("Error while deserializing time");
         };
         assert_eq!(time.to_string(), "T12_21_46".to_string());
         assert_eq!(time.format, "T%H_%M_%S".to_string());
@@ -360,7 +364,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_time_default_equal_midnight() -> Result<(), String> {
+    fn test_time_default_equal_midnight() -> Result<(), SpanError> {
         let time_built = Time::build("00:00:00")?;
         let midnight = Time::midnight();
         let default = Time::default();

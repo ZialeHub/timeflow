@@ -327,7 +327,7 @@ impl TryFrom<&str> for DateTime {
 impl TryFrom<chrono::DateTime<Utc>> for DateTime {
     type Error = SpanError;
     fn try_from(value: chrono::DateTime<Utc>) -> Result<Self, Self::Error> {
-        Ok(value.naive_utc().try_into()?)
+        value.naive_utc().try_into()
     }
 }
 

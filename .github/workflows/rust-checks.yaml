@@ -1,0 +1,74 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.rs"
+  pull_request:
+    branches: ["**"]
+    paths:
+      - "**.rs"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  inspection-quality-checks:
+    name: "Inspection: Quality Checks (fmt, clippy, build, unit tests)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # caches rust dependencies, will improve speed
+      # Thought we should be careful and monitor cache size over time.
+      - name: Cache ~/.cargo
+        uses: actions/cache@v4
+        id: cargo_cache
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Vulnerabilities Check
+        continue-on-error: true
+        run: cargo audit
+
+      - name: Format Check
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+
+      - name: Clippy Lint
+        continue-on-error: true
+        run: cargo clippy --all --all-features --tests -- -D warnings
+
+      - name: Unit Test
+        continue-on-error: true
+        run: cargo test --all-features --verbose
+
+      - name: Release Build Check
+        continue-on-error: true
+        run: cargo build --release
+
+      - name: Unused Dependencies Check
+        continue-on-error: true
+        run: cargo +nightly udeps
+
+        # OUTDATED=$(cargo outdated --format json | jq -r '.[].newest.version' | grep -vE '^(dev-dependencies|unknown)$')
+      - name: Warn for outdated dependencies
+        run: |
+          set +e
+          OUTDATED=$(cargo update --dry-run)
+          if [ -n "$OUTDATED" ]; then
+            echo "::warning ::The following dependencies are outdated:"
+            echo "$OUTDATED"
+          fi
+          exit 0

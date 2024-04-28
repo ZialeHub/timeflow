@@ -2,13 +2,13 @@ name: Rust CI
 
 on:
   push:
-    branches: [main, "**"]
+    branches: [main]
     paths:
       - "**.rs"
   pull_request:
     branches: ["**"]
-    paths:
-      - "**.rs"
+    # paths:
+    # - "**.rs"
 
 env:
   CARGO_TERM_COLOR: always

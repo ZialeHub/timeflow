@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-ususe chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike, Utc};
+use chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike, Utc};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
@@ -694,3 +694,6 @@ pub mod test {
         let datetime = DateTime::build("2023-10-09 01:01:01")?;
         let datetime = datetime.clear_time()?;
         assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
+        Ok(())
+    }
+}

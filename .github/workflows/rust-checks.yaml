@@ -14,17 +14,12 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  inspection-quality-checks:
-    name: "Inspection: Quality Checks (fmt, clippy, build, unit tests)"
+  vulnerability:
+    name: "Vulnerabilities"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      # caches rust dependencies, will improve speed
-      # Thought we should be careful and monitor cache size over time.
+      - uses: dtolnay/rust-toolchain@stable
       - name: Cache ~/.cargo
         uses: actions/cache@v4
         id: cargo_cache
@@ -37,44 +32,128 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
+      - run: cargo audit
 
-      - name: Vulnerabilities Check
-        continue-on-error: true
-        run: cargo audit
+  format:
+    name: "Format"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache ~/.cargo
+        uses: actions/cache@v4
+        id: cargo_cache
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: cargo fmt w--all -- --check
 
-      - name: Format Check
-        continue-on-error: true
-        run: cargo fmt --all -- --check
+  lint:
+    name: "Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache ~/.cargo
+        uses: actions/cache@v4
+        id: cargo_cache
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: cargo clippy --all --all-features --tests -- -D warnings
 
-      - name: Clippy Lint
-        continue-on-error: true
-        run: cargo clippy --all --all-features --tests -- -D warnings
+  unit-tests:
+    name: "Unit Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache ~/.cargo
+        uses: actions/cache@v4
+        id: cargo_cache
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: cargo test --all-features --verbose
 
-      - name: Unit Test
-        continue-on-error: true
-        run: cargo test --all-features --verbose
+  build:
+    name: "Release build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache ~/.cargo
+        uses: actions/cache@v4
+        id: cargo_cache
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: cargo build --release
 
-      - name: Release Build Check
-        continue-on-error: true
-        run: cargo build --release
+  outdated-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache ~/.cargo
+        uses: actions/cache@v4
+        id: cargo_cache
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: cargo outdated --format json
 
-      - name: Unused Dependencies Check
-        continue-on-error: true
-        run: |
-          rustup toolchain install nightly
-          cargo +nightly udeps
-
-      - name: Outdated Dependencies Check
-        continue-on-error: true
-        run: cargo outdated --format json
-
-        # OUTDATED=$(cargo outdated --format json | jq -r '.[].newest.version' | grep -vE '^(dev-dependencies|unknown)$')
-      # - name: Warn for outdated dependencies
-      #   run: |
-      #     set +e
-      #     OUTDATED=$(cargo update --dry-run)
-      #     if [ -n "$OUTDATED" ]; then
-      #       echo "::warning ::The following dependencies are outdated:"
-      #       echo "$OUTDATED"
-      #     fi
-      #     exit 0
+  check-unused-dependencies:
+    name: Outdated Dependencies Check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+      - name: Installs cargo-udeps
+        run: cargo install --force cargo-udeps
+      - name: Run cargo udeps
+        run: cargo udeps

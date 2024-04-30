@@ -51,4 +51,4 @@ jobs:
       - name: unused dependencies (warn)
         if: always()
         continue-on-error: true
-        run: cargo machete
+        uses: bnjbvr/cargo-machete@main

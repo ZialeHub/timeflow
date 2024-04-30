@@ -23,6 +23,15 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Display informations (rust, cargo)
+        shell: bash
+        run: |
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
       - name: vulnerabilities
         run: cargo audit
 

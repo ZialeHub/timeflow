@@ -8,9 +8,8 @@ on:
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize]
     branches: ["**"]
-    # paths:
-    # - "**.rs"
-
+    paths:
+      - "**.rs"
 jobs:
   ci:
     runs-on: ubuntu-latest

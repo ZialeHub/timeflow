@@ -1,10 +1,6 @@
 name: Rust CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "**.rs"
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize]
     branches: ["**"]
@@ -47,10 +43,3 @@ jobs:
       - name: outdated dependencies
         if: always()
         run: cargo outdated --format json
-
-      - name: unused dependencies (warn)
-        if: always()
-        continue-on-error: true
-        run: |
-          cargo install cargo-machete
-          cargo machete

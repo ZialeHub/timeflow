@@ -179,11 +179,6 @@ impl Time {
         }
     }
 
-    /// Return a [bool] to know if the [Time] is in the future
-    pub fn is_in_future(&self) -> Result<bool, SpanError> {
-        Ok(self.time > Self::now()?.time)
-    }
-
     /// Elapsed [TimeDelta] between two [Time]
     pub fn elapsed(&self, lhs: &Self) -> TimeDelta {
         self.time.signed_duration_since(lhs.time)
@@ -429,31 +424,6 @@ pub mod test {
         assert!(time.matches(TimeUnit::Hour, 5));
         assert!(time.matches(TimeUnit::Minute, 23));
         assert!(time.matches(TimeUnit::Second, 18));
-        Ok(())
-    }
-
-    // TEST will fail if now time is 23:00:00 and more
-    #[test]
-    fn is_in_future_last_hour() -> Result<(), SpanError> {
-        let mut time = Time::now()?;
-        time.update(TimeUnit::Hour, -1)?;
-        assert!(!time.is_in_future()?);
-        Ok(())
-    }
-
-    // TEST will fail if now time is 01:00:00 and less
-    #[test]
-    fn is_in_future_next_hour() -> Result<(), SpanError> {
-        let mut time = Time::now()?;
-        time.update(TimeUnit::Hour, 1)?;
-        assert!(time.is_in_future()?);
-        Ok(())
-    }
-
-    #[test]
-    fn is_in_future_now() -> Result<(), SpanError> {
-        let time = Time::now()?;
-        assert!(!time.is_in_future()?);
         Ok(())
     }
 

@@ -8,7 +8,10 @@ on:
       - "**.rs"
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
+    services:
+      docker:
+        image: ubuntu:latest
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v4

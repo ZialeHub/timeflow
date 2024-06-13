@@ -1,0 +1,56 @@
+name: Rust CI (merge on main)
+
+on:
+  push:
+    branches:
+      - cantseeme
+
+env:
+  CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  ci:
+    runs-on:
+      - self-hosted
+    container:
+      image: ghcr.io/ryse-rs/gh_runner_rust:latest
+      options: --log-level=debug --privileged -v /sys/fs/cgroup:/sys/fs/cgroup
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Display information (rust, cargo)
+        run: |
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      - name: Check vulnerabilities
+        run: cargo audit
+
+      - name: Check formatting
+        if: always()
+        run: cargo fmt --all -- --check
+
+      - name: Build release
+        if: always()
+        run: cargo build --release
+
+      - name: Run lints
+        run: cargo clippy --all --all-features --tests -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all-features --verbose
+
+      - name: Check outdated dependencies
+        if: always()
+        run: cargo outdated --format json
+
+      - name: Check unused dependencies
+        if: always()
+        continue-on-error: true
+        run: cargo machete

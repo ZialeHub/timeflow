@@ -1,17 +1,27 @@
 name: Rust CI (merge on main)
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
-    branches: [main]
-    paths:
-      - "**.rs"
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # - uses: mozilla-actions/sccache-action@v0.0.5
       # - uses: Swatinem/rust-cache@v2
       - uses: actions/cache@v4
         id: cargo_cache
@@ -32,7 +42,9 @@ jobs:
           rustc -V
 
       - name: vulnerabilities
-        run: cargo audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
 
       - name: format
         if: always()
@@ -50,7 +62,9 @@ jobs:
 
       - name: outdated dependencies
         if: always()
-        run: cargo outdated --format json
+        run: |
+          cargo install cargo-outdated
+          cargo outdated --format json
 
       - name: unused dependencies (warn)
         if: always()

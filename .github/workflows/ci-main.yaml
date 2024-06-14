@@ -2,9 +2,9 @@ name: Rust CI (merge on main)
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "**.rs"
+    branches: [20-enhance-update-to-self-hosted-actions-runners]
+    # paths:
+    # - "**.rs"
 jobs:
   ci:
     runs-on: [self-hosted, linux, x64]

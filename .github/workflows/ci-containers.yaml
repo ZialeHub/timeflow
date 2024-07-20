@@ -3,7 +3,7 @@ name: Rust CI (merge on main)
 on:
   push:
     branches:
-      - 20-enhance-update-to-self-hosted-actions-runners
+      - cantseeme
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,14 +14,14 @@ jobs:
   ci:
     runs-on:
       - self-hosted
+    container:
+      image: ghcr.io/ryse-rs/gh_runner_rust:latest
+      options: --log-level=debug --privileged -v /sys/fs/cgroup:/sys/fs/cgroup
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: mozilla-actions/sccache-action@v0.0.5
-      - uses: Swatinem/rust-cache@v2
-      - name: Display informations (rust, cargo)
-        shell: bash
+
+      - name: Display information (rust, cargo)
         run: |
           rustup -V
           rustup toolchain list
@@ -29,34 +29,28 @@ jobs:
           cargo -V
           rustc -V
 
-      - name: vulnerabilities
-        run: |
-          cargo install cargo-audit
-          cargo audit
+      - name: Check vulnerabilities
+        run: cargo audit
 
-      - name: format
+      - name: Check formatting
         if: always()
         run: cargo fmt --all -- --check
 
-      - name: release build
+      - name: Build release
         if: always()
         run: cargo build --release
 
-      - name: lints
+      - name: Run lints
         run: cargo clippy --all --all-features --tests -- -D warnings
 
-      - name: unit tests
+      - name: Run tests
         run: cargo test --all-features --verbose
 
-      - name: outdated dependencies
+      - name: Check outdated dependencies
         if: always()
-        run: |
-          cargo install cargo-outdated
-          cargo outdated --format json
+        run: cargo outdated --format json
 
-      - name: unused dependencies (warn)
+      - name: Check unused dependencies
         if: always()
         continue-on-error: true
-        run: |
-          cargo install cargo-machete
-          cargo machete
+        run: cargo machete

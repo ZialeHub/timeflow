@@ -2,15 +2,14 @@ name: Rust CI (merge on main)
 
 on:
   push:
-    branches: [20-enhance-update-to-self-hosted-actions-runners]
+    branches:
+      - 20-enhance-update-to-self-hosted-actions-runners
     # paths:
     # - "**.rs"
 jobs:
   ci:
-    runs-on: [self-hosted, linux, x64]
-    services:
-      podman:
-        image: ubuntu:latest
+    runs-on:
+      - self-hosted
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4

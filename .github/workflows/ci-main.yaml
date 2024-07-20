@@ -22,11 +22,6 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Display files before build
-        run: |
-          ls -la ./
-          pwd
-
       - name: Display informations (rust, cargo)
         shell: bash
         run: |
@@ -67,15 +62,3 @@ jobs:
         run: |
           cargo install cargo-machete
           cargo machete
-
-      - name: Clean up
-        if: always()
-        run: |
-          cargo clean
-          rm -rf ~/.cargo/registry/index ~/.cargo/registry/cache ~/.cargo/git/db
-          git clean -ffdx
-
-      - name: Display files after build
-        run: |
-          ls -la ./
-          pwd

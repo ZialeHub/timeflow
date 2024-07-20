@@ -16,8 +16,7 @@ jobs:
       - self-hosted
     container:
       image: ghcr.io/ryse-rs/gh_runner_rust:latest
-      options: --user root
-
+      options: --privileged
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4

@@ -2,15 +2,15 @@ name: Rustx ci/cd workflow
 
 on:
   push:
-    branches: [ "84-implement-cicd" ]
+    branches: ["84-implement-cicd"]
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME : rustxbackend
+  BACKEND_IMAGE_NAME: rustxbackend
   BACKEND_IMAGE_VERSION: latest
-  FRONTEND_IMAGE_NAME : rustxfrontend
+  FRONTEND_IMAGE_NAME: rustxfrontend
   FRONTEND_IMAGE_VERSION: latest
   PROD_IP: 10.52.43.43
   PROD_PORT: 4242
@@ -18,68 +18,20 @@ env:
   TOKEN_OWNER: kneshi
 
 jobs:
-
   preapre_runner:
     name: Prepare runner
     runs-on: [self-hosted, linux, x64]
-    
-    steps:
 
-    - name: Clear docker on runner
-      run: docker system prune -a -f
+    steps:
+      - name: Clear docker on runner
+        run: docker system prune -a -f
 
   build_backend:
-      name: Build & Push Backend
-      runs-on: [self-hosted, linux, x64]
-      needs: preapre_runner
-
-      steps:
-
-        - name: Clean build folder on runner
-          run: |
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-
-        - name: Checkout code
-          uses: actions/checkout@v4
-
-        - name: Delete old lib/form_builder
-          run: rm -rf lib/form_builder
-        
-        - name: Clone form_builder lib
-          run: git clone -b main --recurse-submodules -j8 https://${FORM_BUILDER_GITHUB_CI_TOKEN}@github.com/42Angouleme/form_builder.git lib/form_builder
-          env:
-            FORM_BUILDER_GITHUB_CI_TOKEN: ${{ secrets.FORM_BUILDER_GITHUB_CI_TOKEN }}
-
-        - name: copy .env
-          run: |
-            cat << EOF > axum_backend/.env
-            ${{ secrets.CI_BACKEND_ENV }}
-            EOF
-
-        - name: Log in to the Container registry
-          uses: docker/login-action@v3
-          with:
-            registry: ${{ env.REGISTRY }}
-            username: ${{ github.actor }}
-            password: ${{ secrets.REGISTRY_RUSTY_TOKEN }}
-
-        - name: Build and push backend
-          uses: docker/build-push-action@v5
-          with:
-            context: .
-            platforms: linux/amd64
-            file: Dockerfile-backend
-            push: true
-            tags: ${{ env.REGISTRY }}/42angouleme/${{ env.BACKEND_IMAGE_NAME }}:${{ env.BACKEND_IMAGE_VERSION}}
-
-  build_frontend:
-    name: Build & Push Frontend
+    name: Build & Push Backend
     runs-on: [self-hosted, linux, x64]
     needs: preapre_runner
 
     steps:
-    
       - name: Clean build folder on runner
         run: |
           rm -rf ./* || true
@@ -90,7 +42,51 @@ jobs:
 
       - name: Delete old lib/form_builder
         run: rm -rf lib/form_builder
-      
+
+      - name: Clone form_builder lib
+        run: git clone -b main --recurse-submodules -j8 https://${FORM_BUILDER_GITHUB_CI_TOKEN}@github.com/42Angouleme/form_builder.git lib/form_builder
+        env:
+          FORM_BUILDER_GITHUB_CI_TOKEN: ${{ secrets.FORM_BUILDER_GITHUB_CI_TOKEN }}
+
+      - name: copy .env
+        run: |
+          cat << EOF > axum_backend/.env
+          ${{ secrets.CI_BACKEND_ENV }}
+          EOF
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.REGISTRY_RUSTY_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          file: Dockerfile-backend
+          push: true
+          tags: ${{ env.REGISTRY }}/42angouleme/${{ env.BACKEND_IMAGE_NAME }}:${{ env.BACKEND_IMAGE_VERSION}}
+
+  build_frontend:
+    name: Build & Push Frontend
+    runs-on: [self-hosted, linux, x64]
+    needs: preapre_runner
+
+    steps:
+      - name: Clean build folder on runner
+        run: |
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Delete old lib/form_builder
+        run: rm -rf lib/form_builder
+
       - name: Clone form_builder lib
         run: git clone -b complete_prelude --recurse-submodules -j8 https://${FORM_BUILDER_GITHUB_CI_TOKEN}@github.com/42Angouleme/form_builder.git lib/form_builder
         env:
@@ -112,44 +108,41 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/42angouleme/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.FRONTEND_IMAGE_VERSION}}
 
-
   deploy:
-
     name: Deploy & Run
     needs: [build_backend, build_frontend]
     runs-on: [self-hosted, linux, x64]
 
     steps:
-    
-    - name: Connect to production server
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ env.PROD_IP }}
-        username: ${{ env.PROD_USER }}
-        key: ${{ secrets.RANDRIA_PRIV_KEY }}
-        port: ${{ env.PROD_PORT }}
-        script: |
-          export REGISTRY_RUSTY_READ=${{ secrets.REGISTRY_RUSTY_READ }}
-          echo $REGISTRY_RUSTY_READ | docker login ghcr.io -u ${{ env.TOKEN_OWNER }} --password-stdin
-          docker compose down
-          docker system prune -a -f
-          cat << EOF > ~/docker-compose.yml
-          version: '3'
+      - name: Connect to production server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.PROD_IP }}
+          username: ${{ env.PROD_USER }}
+          key: ${{ secrets.RANDRIA_PRIV_KEY }}
+          port: ${{ env.PROD_PORT }}
+          script: |
+            export REGISTRY_RUSTY_READ=${{ secrets.REGISTRY_RUSTY_READ }}
+            echo $REGISTRY_RUSTY_READ | docker login ghcr.io -u ${{ env.TOKEN_OWNER }} --password-stdin
+            docker compose down
+            docker system prune -a -f
+            cat << EOF > ~/docker-compose.yml
+            version: '3'
 
-          services:
-            ${{ env.BACKEND_IMAGE_NAME }}:
-              container_name: ${{ env.BACKEND_IMAGE_NAME }}
-              image: ${{ env.REGISTRY }}/42angouleme/${{ env.BACKEND_IMAGE_NAME }}:${{ env.BACKEND_IMAGE_VERSION}}
-              ports:
-                - "8000:8000"
-              restart: unless-stopped
-              
-            ${{ env.FRONTEND_IMAGE_NAME }}: 
-              container_name: ${{ env.FRONTEND_IMAGE_NAME }}
-              image: ${{ env.REGISTRY }}/42angouleme/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.FRONTEND_IMAGE_VERSION}}
-              ports:
-                - "8080:80"
-              restart: unless-stopped
+            services:
+              ${{ env.BACKEND_IMAGE_NAME }}:
+                container_name: ${{ env.BACKEND_IMAGE_NAME }}
+                image: ${{ env.REGISTRY }}/42angouleme/${{ env.BACKEND_IMAGE_NAME }}:${{ env.BACKEND_IMAGE_VERSION}}
+                ports:
+                  - "8000:8000"
+                restart: unless-stopped
+                
+              ${{ env.FRONTEND_IMAGE_NAME }}: 
+                container_name: ${{ env.FRONTEND_IMAGE_NAME }}
+                image: ${{ env.REGISTRY }}/42angouleme/${{ env.FRONTEND_IMAGE_NAME }}:${{ env.FRONTEND_IMAGE_VERSION}}
+                ports:
+                  - "8080:80"
+                restart: unless-stopped
 
-          EOF
-          docker compose -f ~/docker-compose.yml up -d
+            EOF
+            docker compose -f ~/docker-compose.yml up -d

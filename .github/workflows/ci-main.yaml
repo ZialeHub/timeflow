@@ -4,21 +4,30 @@ on:
   push:
     branches:
       - 20-enhance-update-to-self-hosted-actions-runners
-
 jobs:
-  prepare:
-    runs-on: self-hosted
+  ci:
+    runs-on:
+      - self-hosted
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # - uses: Swatinem/rust-cache@v2
       - uses: actions/cache@v4
+        id: cargo_cache
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Display information (rust, cargo)
+
+      - name: Display files before build
+        run: |
+          ls -la ./
+          pwd
+
+      - name: Display informations (rust, cargo)
         shell: bash
         run: |
           rustup -V
@@ -26,67 +35,47 @@ jobs:
           rustup default
           cargo -V
           rustc -V
-      - name: Prepare workspace
+
+      - name: vulnerabilities
         run: |
-          cargo fetch
-      - name: Create workspace artifact
-        run: tar czf workspace.tar.gz .
-      - uses: actions/upload-artifact@v3
-        with:
-          name: workspace
-          path: workspace.tar.gz
+          cargo install cargo-audit
+          cargo audit
 
-  security:
-    needs: prepare
-    runs-on: self-hosted
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: workspace
-      - run: tar xzf workspace.tar.gz
-      - name: Check vulnerabilities
-        run: cargo audit
-
-  code_quality:
-    needs: prepare
-    runs-on: self-hosted
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: workspace
-      - run: tar xzf workspace.tar.gz
-      - name: Check formatting
+      - name: format
+        if: always()
         run: cargo fmt --all -- --check
-      - name: Run lints
+
+      - name: release build
+        if: always()
+        run: cargo build --release
+
+      - name: lints
         run: cargo clippy --all --all-features --tests -- -D warnings
 
-  build_and_test:
-    needs: prepare
-    runs-on: self-hosted
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: workspace
-      - run: tar xzf workspace.tar.gz
-      - name: Release build
-        run: cargo build --release
-      - name: Run unit tests
+      - name: unit tests
         run: cargo test --all-features --verbose
 
-  dependency_checks:
-    needs: prepare
-    runs-on: self-hosted
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: workspace
-      - run: tar xzf workspace.tar.gz
-      - name: Check outdated dependencies
+      - name: outdated dependencies
+        if: always()
         run: |
           cargo install cargo-outdated
           cargo outdated --format json
-      - name: Check unused dependencies
+
+      - name: unused dependencies (warn)
+        if: always()
         continue-on-error: true
         run: |
           cargo install cargo-machete
           cargo machete
+
+      - name: Clean up
+        if: always()
+        run: |
+          cargo clean
+          rm -rf ~/.cargo/registry/index ~/.cargo/registry/cache ~/.cargo/git/db
+          git clean -ffdx
+
+      - name: Display files after build
+        run: |
+          ls -la ./
+          pwd

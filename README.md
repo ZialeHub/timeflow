@@ -1,6 +1,6 @@
-[![Rust CI](https://github.com/ryse-rs/span-rs/actions/workflows/ci-main.yaml/badge.svg)](https://github.com/ryse-rs/span-rs/actions/workflows/ci-main.yaml)
-[![codecov](https://codecov.io/gh/ryse-rs/span-rs/graph/badge.svg?token=32E2V78DFP)](https://codecov.io/gh/ryse-rs/span-rs)
-[![codecov](https://codecov.io/gh/ryse-rs/span-rs/graphs/sunburst.svg?token=32E2V78DFP)](https://codecov.io/gh/ryse-rs/span-rs)
+[![Rust CI](https://github.com/ryse-rs/span/actions/workflows/ci-main.yaml/badge.svg)](https://github.com/ryse-rs/span/actions/workflows/ci-main.yaml)
+[![codecov](https://codecov.io/gh/ryse-rs/span/graph/badge.svg?token=32E2V78DFP)](https://codecov.io/gh/ryse-rs/span)
+[![codecov](https://codecov.io/gh/ryse-rs/span/graphs/sunburst.svg?token=32E2V78DFP)](https://codecov.io/gh/ryse-rs/span)
 
 # What is span?
 

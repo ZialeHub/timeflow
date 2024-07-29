@@ -1,6 +1,5 @@
 [![Rust CI](https://github.com/ryse-rs/span/actions/workflows/ci-main.yaml/badge.svg)](https://github.com/ryse-rs/span/actions/workflows/ci-main.yaml)
 [![codecov](https://codecov.io/gh/ryse-rs/span/graph/badge.svg?token=E7HLJRBTXZ)](https://codecov.io/gh/ryse-rs/span)
-[![codecov](https://codecov.io/gh/ryse-rs/span/graphs/sunburst.svg?token=E7HLJRBTXZ)](https://codecov.io/gh/ryse-rs/span)
 
 # What is span?
 

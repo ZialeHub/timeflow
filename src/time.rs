@@ -35,7 +35,7 @@ pub enum TimeUnit {
 /// Structure to handle time management
 ///
 /// Use [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT) as default format for time
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
 pub struct Time {
     #[serde(serialize_with = "time_to_str", deserialize_with = "time_from_str")]
     pub time: NaiveTime,

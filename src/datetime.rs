@@ -42,7 +42,7 @@ pub enum DateTimeUnit {
 /// Structure to handle datetime management
 ///
 /// Use [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT) as default format for datetime
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Default, Clone, Serialize, Deserialize)]
 pub struct DateTime {
     #[serde(
         serialize_with = "datetime_to_str",

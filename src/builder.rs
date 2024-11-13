@@ -1,6 +1,11 @@
 use crate::{BASE_DATETIME_FORMAT, BASE_DATE_FORMAT, BASE_TIME_FORMAT};
 
 /// Builder to set the default date, time, and datetime format
+///
+/// # Attributes
+/// - date_format: Option<&'static str>
+/// - time_format: Option<&'static str>
+/// - datetime_format: Option<&'static str>
 #[derive(Debug, Clone, Default)]
 pub struct SpanBuilder {
     date_format: Option<&'static str>,
@@ -9,7 +14,16 @@ pub struct SpanBuilder {
 }
 
 impl SpanBuilder {
-    /// Create a new builder
+    /// Create a SpanBuilder to personnalie the default date, time, and datetime format
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let builder = SpanBuilder::builder()
+    ///    .date_format("%d %m %Y")
+    ///    .time_format("T%H:%M:%SZ.000")
+    ///    .datetime_format("%Y-%m-%d %H:%M:%S")
+    ///    .build();
+    /// ```
     pub fn builder() -> Self {
         Self::default()
     }

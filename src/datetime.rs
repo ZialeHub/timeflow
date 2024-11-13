@@ -104,12 +104,28 @@ impl DateTime {
     }
 
     /// Setter for the format
+    ///
+    ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
     pub fn format(mut self, format: &str) -> Self {
         self.format = format.to_string();
         self
     }
 
     /// Function to increase / decrease the datetime [DateTime] with [DateTimeUnit]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
+    ///
+    /// datetime.update(DateTimeUnit::Year, 1);
+    /// assert_eq!(datetime.to_string(), "2024-10-09 00:00:00".to_string());
+    ///
+    /// datetime.update(DateTimeUnit::Minute, 5);
+    /// assert_eq!(datetime.to_string(), "2024-10-09 00:05:00".to_string());
+    /// ```
+    ///
+    /// # Errors
+    /// The function will return an Err(_) if the operation is not possible or [chrono] fails to update the datetime
     pub fn update(&self, unit: DateTimeUnit, value: i32) -> Result<Self, SpanError> {
         let datetime = match unit {
             DateTimeUnit::Year if value > 0 => self
@@ -154,11 +170,30 @@ impl DateTime {
     }
 
     /// Go to the next [DateTimeUnit] from [DateTime]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mut datetime = DateTime::build("2023-10-09 00:00:00")?;
+    ///
+    /// datetime.next(DateTimeUnit::Month);
+    /// assert_eq!(datetime.to_string(), "2023-11-09 00:00:00".to_string());
+    /// ```
+    ///
+    /// # Errors
+    /// The function will return an Err(_) if the operation is not possible
     pub fn next(&self, unit: DateTimeUnit) -> Result<Self, SpanError> {
         self.update(unit, 1)
     }
 
     /// Compare the [DateTimeUnit] from [DateTime] and value ([u32])
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let datetime = DateTime::build("2023-10-09 05:23:18")?;
+    /// assert!(datetime.matches(DateTimeUnit::Year, 2023));
+    /// assert!(datetime.matches(DateTimeUnit::Month, 10));
+    /// assert!(!datetime.matches(DateTimeUnit::Minute, 53));
+    /// ```
     pub fn matches(&self, unit: DateTimeUnit, value: u32) -> bool {
         match unit {
             DateTimeUnit::Year => self.datetime.year() == value as i32,
@@ -176,17 +211,53 @@ impl DateTime {
     }
 
     /// Return a [bool] to know if the [DateTime] is in the future
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let datetime = DateTime::build("2023-10-09 05:23:18")?;
+    /// // If Now is 2024-01-01 00:00:00
+    /// assert!(!datetime.is_in_future()?);
+    ///
+    /// let datetime = DateTime::build("2025-01-09 02:01:15")?;
+    /// // If Now is 2024-01-01 00:00:00
+    /// assert!(datetime.is_in_future()?);
+    /// ```
     pub fn is_in_future(&self) -> Result<bool, SpanError> {
         let now = Self::build(Local::now().format(&BASE_DATETIME_FORMAT.get()))?;
         Ok(self.datetime > now.datetime)
     }
 
     /// Elapsed [Duration] between two [DateTime]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rhs = DateTime::build("2023-10-09 00:00:00")?;
+    /// let lhs = DateTime::build("2022-10-09 00:00:00")?;
+    /// assert_eq!(rhs.elapsed(&lhs), TimeDelta::try_days(365).unwrap());
+    /// ```
     pub fn elapsed(&self, lhs: &Self) -> Duration {
         self.datetime.signed_duration_since(lhs.datetime)
     }
 
     /// Number of [DateTimeUnit] between two [DateTime]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rhs = DateTime::build("2023-10-09 01:01:01")?;
+    /// let lhs = DateTime::build("2023-10-08 00:00:00")?;
+    /// let years_in_between = rhs.unit_in_between(DateTimeUnit::Year, &lhs);
+    /// let months_in_between = rhs.unit_in_between(DateTimeUnit::Month, &lhs);
+    /// let days_in_between = rhs.unit_in_between(DateTimeUnit::Day, &lhs);
+    /// let hours_in_between = rhs.unit_in_between(DateTimeUnit::Hour, &lhs);
+    /// let minutes_in_between = rhs.unit_in_between(DateTimeUnit::Minute, &lhs);
+    /// let seconds_in_between = rhs.unit_in_between(DateTimeUnit::Second, &lhs);
+    /// assert_eq!(years_in_between, 0);
+    /// assert_eq!(months_in_between, 0);
+    /// assert_eq!(days_in_between, 1);
+    /// assert_eq!(hours_in_between, days_in_between * 24 + 1);
+    /// assert_eq!(minutes_in_between, hours_in_between * 60 + 1);
+    /// assert_eq!(seconds_in_between, minutes_in_between * 60 + 1);
+    /// ```
     pub fn unit_in_between(&self, unit: DateTimeUnit, lhs: &Self) -> i32 {
         match unit {
             DateTimeUnit::Year => self.datetime.year() - lhs.datetime.year(),
@@ -226,6 +297,13 @@ impl DateTime {
     }
 
     /// Clear the time from the [DateTime]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let datetime = DateTime::build("2023-10-09 01:01:01")?;
+    /// let datetime = datetime.clear_time()?;
+    /// assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
+    /// ```
     pub fn clear_time(&self) -> Result<Self, SpanError> {
         let datetime = self
             .datetime

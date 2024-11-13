@@ -91,12 +91,28 @@ impl Date {
     }
 
     /// Setter for the format
+    ///
+    ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
     pub fn format(mut self, format: impl ToString) -> Self {
         self.format = format.to_string();
         self
     }
 
     /// Function to increase / decrease the date [Date] with [DateUnit]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mut date = Date::build("2023-10-09")?;
+    /// date.update(DateUnit::Year, 1)?;
+    /// assert_eq!(date.to_string(), "2024-10-09".to_string());
+    ///
+    /// let mut date = Date::build("2023-10-09")?;
+    /// date.update(DateUnit::Year, -1)?;
+    /// assert_eq!(date.to_string(), "2022-10-09".to_string());
+    /// ```
+    ///
+    /// # Errors
+    /// Return an Err(_) if the operation is not possible or if [chrono] fails
     pub fn update(&self, unit: DateUnit, value: i32) -> Result<Self, SpanError> {
         let date = match unit {
             DateUnit::Year if value > 0 => {
@@ -128,11 +144,26 @@ impl Date {
     }
 
     /// Go to the next [DateUnit] from [Date]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let mut date = Date::build("2023-10-09")?;
+    /// date.next(DateUnit::Day)?;
+    /// assert_eq!(date.to_string(), "2023-10-10".to_string());
+    /// ```
     pub fn next(&self, unit: DateUnit) -> Result<Self, SpanError> {
         self.update(unit, 1)
     }
 
     /// Compare the [DateUnit] from [Date] and value ([i32])
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let date = Date::build("2023-10-09")?;
+    /// assert!(date.matches(DateUnit::Year, 2023));
+    /// assert!(date.matches(DateUnit::Month, 10));
+    /// assert!(date.matches(DateUnit::Day, 9));
+    /// ```
     pub fn matches(&self, unit: DateUnit, value: i32) -> bool {
         match unit {
             DateUnit::Year => self.date.year() == value,
@@ -147,16 +178,41 @@ impl Date {
     }
 
     /// Return a [bool] to know if the [Date] is in the future
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // If today is 2024-01-01
+    /// let date = Date::build("2023-10-09")?;
+    /// assert!(!date.is_in_future()?);
+    ///
+    /// // If today is 2022-01-01
+    /// let date = Date::build("2023-10-09")?;
+    /// assert!(date.is_in_future()?);
+    /// ```
     pub fn is_in_future(&self) -> Result<bool, SpanError> {
         Ok(self.date > Self::today()?.date)
     }
 
     /// Elapsed [Duration] between two [Date]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rhs = Date::build("2023-10-20")?;
+    /// let lhs = Date::build("2023-10-09")?;
+    /// assert_eq!(rhs.elapsed(&lhs), TimeDelta::try_days(11).unwrap());
+    /// ```
     pub fn elapsed(&self, lhs: &Self) -> Duration {
         self.date.signed_duration_since(lhs.date)
     }
 
     /// Number of [DateUnit] between two [Date]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let rhs = Date::build("2023-10-20")?;
+    /// let lhs = Date::build("2023-10-09")?;
+    /// assert_eq!(rhs.unit_in_between(DateUnit::Day, &lhs), Ok(11));
+    /// ```
     pub fn unit_in_between(&self, unit: DateUnit, lhs: &Self) -> Result<i64, SpanError> {
         Ok(match unit {
             DateUnit::Year => self.date.year() as i64 - lhs.date.year() as i64,

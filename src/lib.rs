@@ -15,8 +15,26 @@ pub mod prelude;
 pub mod time;
 
 lazy_static! {
+    /// Default format for [Date](date::Date) is `%Y-%m-%d`
+    ///
+    /// # Usage
+    /// ```rust,ignore
+    /// BASE_DATE_FORMAT.get();
+    /// ```
     static ref BASE_DATE_FORMAT: Arc<RwLock<&'static str>> = Arc::new(RwLock::new("%Y-%m-%d"));
+    /// Default format for [Time](time::Time) is `%H:%M:%S`
+    ///
+    /// # Usage
+    /// ```rust,ignore
+    /// BASE_TIME_FORMAT.get();
+    /// ```
     static ref BASE_TIME_FORMAT: Arc<RwLock<&'static str>> = Arc::new(RwLock::new("%H:%M:%S"));
+    /// Default format for [DateTime](datetime::DateTime) is `format!("{} {}", BASE_DATE_FORMAT, BASE_TIME_FORMAT)`
+    ///
+    /// # Usage
+    /// ```rust,ignore
+    /// BASE_DATETIME_FORMAT.get();
+    /// ```
     static ref BASE_DATETIME_FORMAT: Arc<RwLock<Option<&'static str>>> =
         Arc::new(RwLock::new(None));
 }

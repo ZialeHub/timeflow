@@ -1,28 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
 use chrono::{Datelike, Days, Duration, Local, Months, NaiveDate, NaiveDateTime, Utc};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{DateError, ErrorContext, SpanError},
     BASE_DATE_FORMAT,
 };
-
-/// [Serialize] the [NaiveDate] variable from [Date]
-pub fn date_to_str<S: Serializer>(date: &NaiveDate, serializer: S) -> Result<S::Ok, S::Error> {
-    date.format(BASE_DATE_FORMAT.get())
-        .to_string()
-        .serialize(serializer)
-}
-
-/// [Deserialize] the [NaiveDate] variable from [Date]
-pub fn date_from_str<'de, D>(deserializer: D) -> Result<NaiveDate, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let date: String = Deserialize::deserialize(deserializer)?;
-    NaiveDate::parse_from_str(&date, BASE_DATE_FORMAT.get()).map_err(de::Error::custom)
-}
 
 /// Unit to update [Date]
 #[derive(Debug, Clone)]
@@ -37,7 +21,6 @@ pub enum DateUnit {
 /// Use [BASE_DATE_FORMAT](static@BASE_DATE_FORMAT) as default format for date
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Date {
-    #[serde(serialize_with = "date_to_str", deserialize_with = "date_from_str")]
     pub date: NaiveDate,
     pub format: String,
 }

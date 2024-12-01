@@ -1,28 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
 use chrono::{Local, NaiveDateTime, NaiveTime, TimeDelta, Timelike, Utc};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{ErrorContext, SpanError, TimeError},
     BASE_TIME_FORMAT,
 };
-
-/// [Serialize] the [NaiveTime] variable from [Time]
-pub fn time_to_str<S: Serializer>(time: &NaiveTime, serializer: S) -> Result<S::Ok, S::Error> {
-    time.format(BASE_TIME_FORMAT.get())
-        .to_string()
-        .serialize(serializer)
-}
-
-/// [Deserialize] the [NaiveTime] variable from [Time]
-pub fn time_from_str<'de, D>(deserializer: D) -> Result<NaiveTime, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let time: String = Deserialize::deserialize(deserializer)?;
-    NaiveTime::parse_from_str(&time, BASE_TIME_FORMAT.get()).map_err(de::Error::custom)
-}
 
 /// Unit to update [Time]
 #[derive(Debug, Clone)]
@@ -37,7 +21,6 @@ pub enum TimeUnit {
 /// Use [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT) as default format for time
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
 pub struct Time {
-    #[serde(serialize_with = "time_to_str", deserialize_with = "time_from_str")]
     pub time: NaiveTime,
     pub format: String,
 }

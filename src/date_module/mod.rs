@@ -34,8 +34,8 @@ pub mod date {
     /// Use [BASE_DATE_FORMAT](static@BASE_DATE_FORMAT) as default format for date
     #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
     pub struct Date {
-        pub date: NaiveDate,
-        pub format: String,
+        pub(crate) date: NaiveDate,
+        pub(crate) format: String,
     }
 
     impl std::fmt::Display for Date {
@@ -586,6 +586,39 @@ pub mod date {
             assert_eq!(years_in_between, 0);
             assert_eq!(months_in_between, years_in_between * 12 + 2);
             assert_eq!(days_in_between, 58);
+            Ok(())
+        }
+    }
+}
+
+#[cfg(all(feature = "date", feature = "datetime"))]
+mod datetime_into_date {
+    impl From<crate::datetime::DateTime> for crate::date::Date {
+        /// Convert a [DateTime] to a [Date]
+        ///
+        /// Only keep the date part of the [DateTime]
+        ///
+        /// # Example
+        /// ```rust,ignore
+        /// let datetime = DateTime::build("2023-10-09 12:00:00")?;
+        /// let date = Date::from(datetime);
+        /// assert_eq!(date.to_string(), "2023-10-09".to_string());
+        /// ```
+        fn from(value: crate::datetime::DateTime) -> Self {
+            Self {
+                date: value.date(),
+                format: crate::date::BASE_DATE_FORMAT.get().to_string(),
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        #[test]
+        fn datetime_into_date() -> Result<(), crate::error::SpanError> {
+            let datetime = crate::datetime::DateTime::build("2023-10-09 12:00:00")?;
+            let date = crate::date::Date::from(datetime);
+            assert_eq!(date.to_string(), "2023-10-09".to_string());
             Ok(())
         }
     }

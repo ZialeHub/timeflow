@@ -53,8 +53,8 @@ pub mod datetime {
     /// Use [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT) as default format for datetime
     #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Default, Clone, Serialize, Deserialize)]
     pub struct DateTime {
-        datetime: NaiveDateTime,
-        format: String,
+        pub(crate) datetime: NaiveDateTime,
+        pub(crate) format: String,
     }
 
     impl std::fmt::Display for DateTime {
@@ -797,6 +797,48 @@ pub mod datetime {
         fn clear_time() -> Result<(), SpanError> {
             let datetime = DateTime::build("2023-10-09 01:01:01")?;
             let datetime = datetime.clear_time()?;
+            assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
+            Ok(())
+        }
+    }
+}
+
+#[cfg(all(feature = "date", feature = "datetime"))]
+mod date_into_datetime {
+    use crate::error::ErrorContext;
+
+    /// Convert a [Date] to a [DateTime]
+    ///
+    /// Time will be set to 00:00:00
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let date = crate::date::Date::build("2023-10-09")?;
+    /// let datetime = crate::datetime::DateTime::try_from(date)?;
+    /// assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
+    /// ```
+    impl TryFrom<crate::date::Date> for crate::datetime::DateTime {
+        type Error = crate::error::SpanError;
+        fn try_from(value: crate::date::Date) -> Result<Self, Self::Error> {
+            let Some(datetime) = value.date.and_hms_opt(0, 0, 0) else {
+                return Err(crate::error::SpanError::InvalidTime(String::from(
+                    "00:00:00",
+                )))
+                .err_ctx(crate::error::DateTimeError);
+            };
+            Ok(Self {
+                datetime,
+                format: crate::datetime::BASE_DATETIME_FORMAT.get().to_string(),
+            })
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        #[test]
+        fn date_into_datetime() -> Result<(), crate::error::SpanError> {
+            let date = crate::date::Date::build("2023-10-09")?;
+            let datetime = crate::datetime::DateTime::try_from(date)?;
             assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
             Ok(())
         }

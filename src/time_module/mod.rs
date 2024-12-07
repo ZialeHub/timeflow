@@ -35,8 +35,8 @@ pub mod time {
     /// Use [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT) as default format for time
     #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
     pub struct Time {
-        pub time: NaiveTime,
-        pub format: String,
+        pub(crate) time: NaiveTime,
+        pub(crate) format: String,
     }
 
     impl std::fmt::Display for Time {
@@ -337,7 +337,7 @@ pub mod time {
         }
 
         #[test]
-        fn test_time_add_one_minute() -> Result<(), SpanError> {
+        fn time_add_one_minute() -> Result<(), SpanError> {
             let time = Time::build("00:00:00")?;
             let new_time = time.update(TimeUnit::Minute, 1)?;
             assert_eq!(new_time.to_string(), "00:01:00".to_string());
@@ -512,6 +512,40 @@ pub mod time {
         fn midnight() -> Result<(), SpanError> {
             let time = Time::midnight();
             assert_eq!(time.to_string(), "00:00:00".to_string());
+            Ok(())
+        }
+    }
+}
+
+#[cfg(all(feature = "time", feature = "datetime"))]
+mod datetime_into_time {
+    /// Convert a [DateTime] to a [Time]
+    ///
+    /// Only keep the time part of the [DateTime]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let datetime = DateTime::build("2021-10-10 12:34:56")?;
+    /// let time = Time::from(datetime);
+    /// assert_eq!(time.to_string(), "12:34:56".to_string());
+    /// ```
+    impl From<crate::datetime::DateTime> for crate::time::Time {
+        fn from(value: crate::datetime::DateTime) -> Self {
+            let time = value.datetime().time();
+            Self {
+                time,
+                format: crate::time::BASE_TIME_FORMAT.get().to_string(),
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        #[test]
+        fn datetime_into_time() -> Result<(), crate::error::SpanError> {
+            let datetime = crate::datetime::DateTime::build("2021-10-10 12:34:56")?;
+            let time = crate::time::Time::from(datetime);
+            assert_eq!(time.to_string(), "12:34:56".to_string());
             Ok(())
         }
     }

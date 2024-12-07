@@ -10,6 +10,8 @@ pub enum SpanError {
     ClearTime(String),
     #[error("InvalidUpdate: {0}")]
     InvalidUpdate(String),
+    #[error("InvalidTime: {0}")]
+    InvalidTime(String),
     #[cfg(feature = "date")]
     #[error("{1} ➤  {0}")]
     Date(#[source] Box<SpanError>, DateError),

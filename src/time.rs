@@ -108,17 +108,17 @@ impl Time {
     }
 
     /// Function to increase / decrease the time [Time] with [TimeUnit]
-    pub fn update(&mut self, unit: TimeUnit, value: i32) -> Result<(), SpanError> {
+    pub fn update(&self, unit: TimeUnit, value: i32) -> Result<Self, SpanError> {
         let delta_time = match unit {
             TimeUnit::Hour => TimeDelta::new(value as i64 * 60 * 60, 0),
             TimeUnit::Minute => TimeDelta::new(value as i64 * 60, 0),
             TimeUnit::Second => TimeDelta::new(value as i64, 0),
         };
         match delta_time {
-            Some(delta_time) => {
-                self.time += delta_time;
-                Ok(())
-            }
+            Some(delta_time) => Ok(Self {
+                time: self.time + delta_time,
+                format: self.format.clone(),
+            }),
             None => Err(SpanError::InvalidUpdate(format!(
                 "Cannot Add/Remove {} {:?} to/from {}",
                 value, unit, self
@@ -128,7 +128,7 @@ impl Time {
     }
 
     /// Go to the next [TimeUnit] from [Time]
-    pub fn next(&mut self, unit: TimeUnit) -> Result<(), SpanError> {
+    pub fn next(&self, unit: TimeUnit) -> Result<Self, SpanError> {
         self.update(unit, 1)
     }
 
@@ -255,63 +255,57 @@ pub mod test {
 
     #[test]
     fn time_add_overflow() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Hour, i32::MIN);
-        assert_eq!(new_time, Ok(()));
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Hour, i32::MIN)?;
+        assert_eq!(new_time.to_string(), "16:00:00".to_string());
         Ok(())
     }
 
     #[test]
     fn time_add_one_hour() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Hour, 1);
-        assert_eq!(new_time, Ok(()));
-        assert_eq!(time.to_string(), "01:00:00".to_string());
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Hour, 1)?;
+        assert_eq!(new_time.to_string(), "01:00:00".to_string());
         Ok(())
     }
 
     #[test]
     fn time_remove_one_hour() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Hour, -1);
-        assert_eq!(new_time, Ok(()));
-        assert_eq!(time.to_string(), "23:00:00".to_string());
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Hour, -1)?;
+        assert_eq!(new_time.to_string(), "23:00:00".to_string());
         Ok(())
     }
 
     #[test]
     fn test_time_add_one_minute() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Minute, 1);
-        assert_eq!(new_time, Ok(()));
-        assert_eq!(time.to_string(), "00:01:00".to_string());
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Minute, 1)?;
+        assert_eq!(new_time.to_string(), "00:01:00".to_string());
         Ok(())
     }
 
     #[test]
     fn time_remove_one_minute() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Minute, -1);
-        assert_eq!(new_time, Ok(()));
-        assert_eq!(time.to_string(), "23:59:00".to_string());
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Minute, -1)?;
+        assert_eq!(new_time.to_string(), "23:59:00".to_string());
         Ok(())
     }
 
     #[test]
     fn time_add_one_second() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Second, 1);
-        assert_eq!(new_time, Ok(()));
-        assert_eq!(time.to_string(), "00:00:01".to_string());
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Second, 1)?;
+        assert_eq!(new_time.to_string(), "00:00:01".to_string());
         Ok(())
     }
 
     #[test]
     fn time_remove_one_second() -> Result<(), SpanError> {
-        let mut time = Time::build("00:00:00")?;
-        let new_time = time.update(TimeUnit::Second, -1);
-        assert_eq!(new_time, Ok(()));
-        assert_eq!(time.to_string(), "23:59:59".to_string());
+        let time = Time::build("00:00:00")?;
+        let new_time = time.update(TimeUnit::Second, -1)?;
+        assert_eq!(new_time.to_string(), "23:59:59".to_string());
         Ok(())
     }
 
@@ -380,7 +374,7 @@ pub mod test {
     #[test]
     fn next_second() -> Result<(), SpanError> {
         let mut time = Time::build("04:23:12")?;
-        time.next(TimeUnit::Second)?;
+        time = time.next(TimeUnit::Second)?;
         assert_eq!(time.to_string(), "04:23:13".to_string());
         Ok(())
     }
@@ -388,7 +382,7 @@ pub mod test {
     #[test]
     fn next_minute() -> Result<(), SpanError> {
         let mut time = Time::build("11:03:22")?;
-        time.next(TimeUnit::Minute)?;
+        time = time.next(TimeUnit::Minute)?;
         assert_eq!(time.to_string(), "11:04:22".to_string());
         Ok(())
     }
@@ -396,7 +390,7 @@ pub mod test {
     #[test]
     fn next_hour_on_midnight() -> Result<(), SpanError> {
         let mut time = Time::build("23:59:34")?;
-        time.next(TimeUnit::Hour)?;
+        time = time.next(TimeUnit::Hour)?;
         assert_eq!(time.to_string(), "00:59:34".to_string());
         Ok(())
     }

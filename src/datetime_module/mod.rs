@@ -823,3 +823,41 @@ mod date_into_datetime {
         }
     }
 }
+
+#[cfg(all(feature = "time", feature = "datetime"))]
+mod time_into_datetime {
+    /// Convert a [Time] to a [DateTime]
+    ///
+    /// Date will be set to 1970-01-01
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let time = crate::time::Time::build("13:27:57")?;
+    /// let datetime = crate::datetime::DateTime::try_from(time)?;
+    /// assert_eq!(datetime.to_string(), "1970-01-01 13:27:57".to_string());
+    /// ```
+    impl TryFrom<crate::time::Time> for crate::datetime::DateTime {
+        type Error = crate::error::SpanError;
+        fn try_from(value: crate::time::Time) -> Result<Self, Self::Error> {
+            let datetime = crate::datetime::DateTime::new(
+                format!("1970-01-01 {}", value),
+                crate::datetime::BASE_DATETIME_FORMAT.get().to_string(),
+            )?;
+            Ok(Self {
+                datetime: datetime.datetime(),
+                format: crate::datetime::BASE_DATETIME_FORMAT.get().to_string(),
+            })
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        #[test]
+        fn time_into_datetime() -> Result<(), crate::error::SpanError> {
+            let time = crate::time::Time::build("13:27:57")?;
+            let datetime = crate::datetime::DateTime::try_from(time)?;
+            assert_eq!(datetime.to_string(), "1970-01-01 13:27:57".to_string());
+            Ok(())
+        }
+    }
+}

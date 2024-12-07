@@ -7,7 +7,7 @@ pub mod time {
 
     use chrono::{Local, NaiveDateTime, NaiveTime, TimeDelta, Timelike, Utc};
     use lazy_static::lazy_static;
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Serialize};
 
     use crate::error::{ErrorContext, SpanError, TimeError};
 

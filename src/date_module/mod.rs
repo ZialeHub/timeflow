@@ -7,7 +7,7 @@ pub mod date {
 
     use chrono::{Datelike, Days, Duration, Local, Months, NaiveDate, NaiveDateTime, Utc};
     use lazy_static::lazy_static;
-    use serde::{de, Deserialize, Serialize};
+    use serde::{Deserialize, Serialize};
 
     use crate::error::{DateError, ErrorContext, SpanError};
 

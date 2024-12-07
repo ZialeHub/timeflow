@@ -7,7 +7,7 @@ pub mod datetime {
 
     use chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike, Utc};
     use lazy_static::lazy_static;
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserialize, Serialize};
 
     #[cfg(feature = "date")]
     use crate::date::BASE_DATE_FORMAT;

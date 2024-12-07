@@ -1,47 +1,24 @@
 #![allow(rustdoc::private_intra_doc_links)]
-
-use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
-
-use lazy_static::lazy_static;
+#[cfg(not(any(feature = "time", feature = "date", feature = "datetime")))]
+compile_error!("At least one feature must be enabled: 'time', 'date', or 'datetime'");
 
 pub mod builder;
-pub mod date;
-pub mod datetime;
+#[cfg(feature = "date")]
+pub mod date_module;
+#[cfg(feature = "datetime")]
+pub mod datetime_module;
 pub mod error;
 pub mod prelude;
 pub mod span;
-pub mod time;
+#[cfg(feature = "time")]
+pub mod time_module;
 
-lazy_static! {
-    static ref BASE_DATE_FORMAT: Arc<RwLock<&'static str>> = Arc::new(RwLock::new("%Y-%m-%d"));
-    static ref BASE_TIME_FORMAT: Arc<RwLock<&'static str>> = Arc::new(RwLock::new("%H:%M:%S"));
-    static ref BASE_DATETIME_FORMAT: Arc<RwLock<Option<&'static str>>> =
-        Arc::new(RwLock::new(None));
-}
-
-impl BASE_DATE_FORMAT {
-    pub fn get(&self) -> &'static str {
-        &self.read().unwrap()
-    }
-}
-
-impl BASE_TIME_FORMAT {
-    pub fn get(&self) -> &'static str {
-        &self.read().unwrap()
-    }
-}
-
-impl BASE_DATETIME_FORMAT {
-    pub fn get(&self) -> String {
-        match self.read().unwrap().deref() {
-            Some(format) => format.to_string(),
-            None => format!("{} {}", BASE_DATE_FORMAT.get(), BASE_TIME_FORMAT.get()),
-        }
-    }
-}
+#[cfg(feature = "date")]
+pub use date_module::date;
+#[cfg(feature = "datetime")]
+pub use datetime_module::datetime;
+#[cfg(feature = "time")]
+pub use time_module::time;
 
 #[cfg(test)]
 pub mod test {

@@ -12,12 +12,50 @@ pub mod prelude;
 #[cfg(feature = "time")]
 pub mod time_module;
 
+#[cfg(feature = "datetime")]
+use std::ops::Deref;
+use std::sync::{LazyLock, RwLock};
+
 #[cfg(feature = "date")]
 pub use date_module::date;
 #[cfg(feature = "datetime")]
 pub use datetime_module::datetime;
 #[cfg(feature = "time")]
 pub use time_module::time;
+
+pub trait GetInner<T: std::fmt::Display> {
+    fn get(&self) -> T;
+}
+
+pub(crate) type BaseFormat<T> = LazyLock<RwLock<T>>;
+
+#[cfg(any(feature = "date", feature = "time"))]
+impl GetInner<&'static str> for BaseFormat<&'static str> {
+    fn get(&self) -> &'static str {
+        &self.read().unwrap()
+    }
+}
+
+#[cfg(feature = "datetime")]
+impl GetInner<String> for BaseFormat<Option<&'static str>> {
+    fn get(&self) -> String {
+        match self.read().unwrap().deref() {
+            Some(format) => format.to_string(),
+            #[cfg(all(feature = "date", feature = "time"))]
+            None => format!(
+                "{} {}",
+                crate::date::BASE_DATE_FORMAT.get(),
+                crate::time::BASE_TIME_FORMAT.get()
+            ),
+            #[cfg(all(not(feature = "date"), feature = "time"))]
+            None => format!("%Y-%m-%d {}", BASE_TIME_FORMAT.get()),
+            #[cfg(all(feature = "date", not(feature = "time")))]
+            None => format!("{} %H:%M:%S", BASE_DATE_FORMAT.get()),
+            #[cfg(not(all(feature = "date", feature = "time")))]
+            None => "%Y-%m-%d %H:%M:%S".to_string(),
+        }
+    }
+}
 
 #[cfg(test)]
 pub mod test {

@@ -2,25 +2,19 @@
 pub mod time {
     use std::{
         ops::{Deref, DerefMut},
-        sync::{Arc, RwLock},
+        sync::{LazyLock, RwLock},
     };
 
     use chrono::{Local, NaiveDateTime, NaiveTime, TimeDelta, Timelike, Utc};
-    use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
 
-    use crate::error::{ErrorContext, SpanError, TimeError};
+    use crate::{
+        error::{ErrorContext, SpanError, TimeError},
+        BaseFormat, GetInner,
+    };
 
-    lazy_static! {
-        pub(crate) static ref BASE_TIME_FORMAT: Arc<RwLock<&'static str>> =
-            Arc::new(RwLock::new("%H:%M:%S"));
-    }
-
-    impl BASE_TIME_FORMAT {
-        pub fn get(&self) -> &'static str {
-            &self.read().unwrap()
-        }
-    }
+    pub(crate) static BASE_TIME_FORMAT: BaseFormat<&'static str> =
+        LazyLock::new(|| RwLock::new("%H:%M:%S"));
 
     /// Unit to update [Time]
     #[derive(Debug, Clone)]

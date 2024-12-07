@@ -2,40 +2,19 @@
 pub mod datetime {
     use std::{
         ops::{Deref, DerefMut},
-        sync::{Arc, RwLock},
+        sync::{LazyLock, RwLock},
     };
 
     use chrono::{Datelike, Days, Duration, Local, Months, NaiveDateTime, Timelike, Utc};
-    use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
 
-    #[cfg(feature = "date")]
-    use crate::date::BASE_DATE_FORMAT;
-    #[cfg(feature = "time")]
-    use crate::time::BASE_TIME_FORMAT;
+    use crate::{
+        error::{DateTimeError, ErrorContext, SpanError},
+        BaseFormat, GetInner,
+    };
 
-    use crate::error::{DateTimeError, ErrorContext, SpanError};
-
-    lazy_static! {
-        pub(crate) static ref BASE_DATETIME_FORMAT: Arc<RwLock<Option<&'static str>>> =
-            Arc::new(RwLock::new(None));
-    }
-
-    impl BASE_DATETIME_FORMAT {
-        pub fn get(&self) -> String {
-            match self.read().unwrap().deref() {
-                Some(format) => format.to_string(),
-                #[cfg(all(feature = "date", feature = "time"))]
-                None => format!("{} {}", BASE_DATE_FORMAT.get(), BASE_TIME_FORMAT.get()),
-                #[cfg(all(not(feature = "date"), feature = "time"))]
-                None => format!("%Y-%m-%d {}", BASE_TIME_FORMAT.get()),
-                #[cfg(all(feature = "date", not(feature = "time")))]
-                None => format!("{} %H:%M:%S", BASE_DATE_FORMAT.get()),
-                #[cfg(not(all(feature = "date", feature = "time")))]
-                None => "%Y-%m-%d %H:%M:%S".to_string(),
-            }
-        }
-    }
+    pub(crate) static BASE_DATETIME_FORMAT: BaseFormat<Option<&'static str>> =
+        LazyLock::new(|| RwLock::new(None));
 
     /// Unit to update [DateTime]
     #[derive(Debug, Clone)]

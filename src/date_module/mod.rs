@@ -2,25 +2,20 @@
 pub mod date {
     use std::{
         ops::{Deref, DerefMut},
-        sync::{Arc, RwLock},
+        sync::{LazyLock, RwLock},
     };
 
     use chrono::{Datelike, Days, Duration, Local, Months, NaiveDate, NaiveDateTime, Utc};
-    use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
 
-    use crate::error::{DateError, ErrorContext, SpanError};
+    use crate::{
+        error::{DateError, ErrorContext, SpanError},
+        BaseFormat, GetInner,
+    };
 
-    lazy_static! {
-        pub(crate) static ref BASE_DATE_FORMAT: Arc<RwLock<&'static str>> =
-            Arc::new(RwLock::new("%Y-%m-%d"));
-    }
+    pub(crate) static BASE_DATE_FORMAT: BaseFormat<&'static str> =
+        LazyLock::new(|| RwLock::new("%Y-%m-%d"));
 
-    impl BASE_DATE_FORMAT {
-        pub fn get(&self) -> &'static str {
-            &self.read().unwrap()
-        }
-    }
     /// Unit to update [Date]
     #[derive(Debug, Clone)]
     pub enum DateUnit {

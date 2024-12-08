@@ -450,6 +450,41 @@ pub mod time {
         }
 
         #[test]
+        fn time_serialize_in_struct() -> Result<(), SpanError> {
+            #[derive(Serialize)]
+            struct Test {
+                begin_at: Time,
+            }
+            let test = Test {
+                begin_at: Time::new(23, 10, 09)?,
+            };
+            let Ok(serialized) = serde_json::to_string(&test) else {
+                panic!("Error while serializing time");
+            };
+            assert_eq!(
+                serialized,
+                "{\"begin_at\":{\"time\":\"23:10:09\",\"format\":\"%H:%M:%S\"}}".to_string()
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn time_deserialize_in_struct() -> Result<(), SpanError> {
+            #[derive(Deserialize)]
+            struct Test {
+                begin_at: Time,
+            }
+            let serialized =
+                "{\"begin_at\":{\"time\":\"23:10:09\",\"format\":\"%H:%M:%S\"}}".to_string();
+            let Ok(test) = serde_json::from_str::<Test>(&serialized) else {
+                panic!("Error while deserializing time");
+            };
+            assert_eq!(test.begin_at.to_string(), "23:10:09".to_string());
+            assert_eq!(test.begin_at.format, BASE_TIME_FORMAT.get().to_string());
+            Ok(())
+        }
+
+        #[test]
         fn time_default_equal_midnight() -> Result<(), SpanError> {
             let time_built = Time::new(00, 00, 00)?;
             let midnight = Time::midnight();

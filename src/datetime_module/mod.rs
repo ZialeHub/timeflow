@@ -653,6 +653,41 @@ pub mod datetime {
         }
 
         #[test]
+        fn datetime_serialize_in_struct() -> Result<(), SpanError> {
+            #[derive(Serialize)]
+            struct Test {
+                begin_at: DateTime,
+            }
+            let test = Test {
+                begin_at: DateTime::new(2023, 10, 09)?,
+            };
+            let Ok(serialized) = serde_json::to_string(&test) else {
+                panic!("Error while serializing datetime");
+            };
+            assert_eq!(
+            serialized,
+            "{\"begin_at\":{\"datetime\":\"2023-10-09T00:00:00\",\"format\":\"%Y-%m-%d %H:%M:%S\"}}".to_string()
+        );
+            Ok(())
+        }
+
+        #[test]
+        fn datetime_deserialize_in_struct() -> Result<(), SpanError> {
+            #[derive(Deserialize)]
+            struct Test {
+                begin_at: DateTime,
+            }
+            let serialized =
+            "{\"begin_at\":{\"datetime\":\"2023-10-09T00:00:00\",\"format\":\"%Y-%m-%d %H:%M:%S\"}}".to_string();
+            let Ok(test) = serde_json::from_str::<Test>(&serialized) else {
+                panic!("Error while deserializing datetime");
+            };
+            assert_eq!(test.begin_at.to_string(), "2023-10-09 00:00:00".to_string());
+            assert_eq!(test.begin_at.format, BASE_DATETIME_FORMAT.get().to_string());
+            Ok(())
+        }
+
+        #[test]
         fn next_month_january_to_february() -> Result<(), SpanError> {
             let mut datetime = DateTime::new(2023, 01, 31)?.with_time(12, 09, 27)?;
             datetime = datetime.next(DateTimeUnit::Month)?;

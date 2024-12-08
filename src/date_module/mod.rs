@@ -476,6 +476,41 @@ pub mod date {
         }
 
         #[test]
+        fn date_serialize_in_struct() -> Result<(), SpanError> {
+            #[derive(Serialize)]
+            struct Test {
+                begin_at: Date,
+            }
+            let test = Test {
+                begin_at: Date::new(2023, 10, 09)?,
+            };
+            let Ok(serialized) = serde_json::to_string(&test) else {
+                panic!("Error while serializing date");
+            };
+            assert_eq!(
+                serialized,
+                "{\"begin_at\":{\"date\":\"2023-10-09\",\"format\":\"%Y-%m-%d\"}}".to_string()
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn date_deserialize_in_struct() -> Result<(), SpanError> {
+            #[derive(Deserialize)]
+            struct Test {
+                begin_at: Date,
+            }
+            let serialized =
+                "{\"begin_at\":{\"date\":\"2023-10-09\",\"format\":\"%Y-%m-%d\"}}".to_string();
+            let Ok(test) = serde_json::from_str::<Test>(&serialized) else {
+                panic!("Error while deserializing date");
+            };
+            assert_eq!(test.begin_at.to_string(), "2023-10-09".to_string());
+            assert_eq!(test.begin_at.format, BASE_DATE_FORMAT.get().to_string());
+            Ok(())
+        }
+
+        #[test]
         fn next_month_january_to_february() -> Result<(), SpanError> {
             let mut date = Date::new(2023, 01, 31)?;
             date = date.next(DateUnit::Month)?;

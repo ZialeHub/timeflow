@@ -64,7 +64,7 @@ pub mod test {
 
     #[test]
     fn log_error_datetime_parse() {
-        let datetime = DateTime::build("09-10-2023 00_00_00");
+        let datetime = DateTime::new(2023, 10, 09);
         let _ = datetime.inspect_err(|e| {
             assert_eq!(
                 e.to_string(),
@@ -103,7 +103,7 @@ pub mod test {
 
     #[test]
     fn log_error_date_parse() {
-        let datetime = Date::build("10-31-2023");
+        let datetime = Date::new(2023, 10, 31);
         let _ = datetime.inspect_err(|e| {
             assert_eq!(e.to_string(), "Date ➤  ParseFromStr: input is out of range")
         });
@@ -124,17 +124,6 @@ pub mod test {
     }
 
     #[test]
-    fn log_error_time_parse() {
-        let time = Time::build("00_00_00");
-        let _ = time.inspect_err(|e| {
-            assert_eq!(
-                e.to_string(),
-                "Time ➤  ParseFromStr: input contains invalid characters"
-            )
-        });
-    }
-
-    #[test]
     fn log_error_time_invalid_update() {
         let err = SpanError::Time(
             Box::new(SpanError::InvalidUpdate(
@@ -150,11 +139,11 @@ pub mod test {
     #[test]
     fn builder_format_default() -> Result<(), SpanError> {
         SpanBuilder::builder().build();
-        let datetime = datetime::DateTime::build("2023-01-01 12:00:00")?;
+        let datetime = datetime::DateTime::new(2023, 01, 01)?.with_time(12, 00, 00)?;
         assert_eq!(datetime.to_string(), "2023-01-01 12:00:00");
-        let date = date::Date::build("2023-01-01")?;
+        let date = date::Date::new(2023, 01, 01)?;
         assert_eq!(date.to_string(), "2023-01-01");
-        let time = time::Time::build("12:00:00")?;
+        let time = time::Time::new(12, 00, 00)?;
         assert_eq!(time.to_string(), "12:00:00");
         Ok(())
     }
@@ -169,9 +158,9 @@ pub mod test {
             .date_format("%d/%m/%Y")
             .time_format("%H_%M_%S")
             .build();
-        datetime::DateTime::build("01/01/2023T12_00_00")?;
-        date::Date::build("01/01/2023")?;
-        time::Time::build("12_00_00")?;
+        datetime::DateTime::new(2023, 01, 01)?.with_time(12, 00, 00)?;
+        date::Date::new(2023, 01, 01)?;
+        time::Time::new(12, 00, 00)?;
         Ok(())
     }
 
@@ -183,9 +172,11 @@ pub mod test {
             .date_format("%d/%m/%Y")
             .time_format("%H_%M_%S")
             .build();
-        datetime::DateTime::new("2023-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")?;
-        date::Date::new("2023-01-01", "%Y-%m-%d")?;
-        time::Time::new("12:00:00", "%H:%M:%S")?;
+        datetime::DateTime::new(2023, 01, 01)?
+            .with_time(12, 00, 00)?
+            .format("%Y-%m-%d %H:%M:%S");
+        date::Date::new(2023, 01, 01)?.format("%Y-%m-%d");
+        time::Time::new(12, 00, 00)?.format("%H:%M:%S");
         Ok(())
     }
 
@@ -196,9 +187,9 @@ pub mod test {
             .date_format("%d/%m/%Y")
             .time_format("%H_%M_%S")
             .build();
-        datetime::DateTime::build("01/01/2023 12_00_00")?;
-        date::Date::build("01/01/2023")?;
-        time::Time::build("12_00_00")?;
+        datetime::DateTime::new(2023, 01, 01)?.with_time(12, 00, 00)?;
+        date::Date::new(2023, 01, 01)?;
+        time::Time::new(12, 00, 00)?;
         Ok(())
     }
 }

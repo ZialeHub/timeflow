@@ -60,48 +60,29 @@ pub mod time {
     }
 
     impl Time {
-        /// Create a new variable [Time] from the parameters `time` and `format`
+        /// Create a new variable [Time] from hour, minute and second
         ///
-        ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
+        /// Use the format [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT) by default
         ///
         /// # Example
         ///
         /// ```rust,ignore
-        /// let time = Time::new("09_27_00", "%H_%M_%S")?;
+        /// let time = Time::new(09, 27, 00)?;
         ///
-        /// assert_eq!(Time::build("11:35:19"), Time::new("11:35:19", BASE_TIME_FORMAT))
+        /// assert_eq!(time.to_string(), "09:27:00".to_string());
         /// ```
         ///
         /// # Errors
         ///
         /// Return an Err(_) if `time` is not formated with `format`
-        pub fn new(time: impl ToString, format: impl ToString) -> Result<Self, SpanError> {
-            let time = match NaiveTime::parse_from_str(&time.to_string(), &format.to_string()) {
-                Ok(time) => time,
-                Err(e) => return Err(SpanError::ParseFromStr(e)).err_ctx(TimeError),
+        pub fn new(hour: u32, minute: u32, second: u32) -> Result<Self, SpanError> {
+            let Some(time) = NaiveTime::from_hms_opt(hour, minute, second) else {
+                return Err(SpanError::InvalidTime(hour, minute, second)).err_ctx(TimeError);
             };
             Ok(Self {
                 time,
-                format: format.to_string(),
+                format: BASE_TIME_FORMAT.get().to_string(),
             })
-        }
-
-        /// Create a new variable [Time] from the parameter `time` formated with [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT)
-        ///
-        /// # Example
-        ///
-        /// ```rust,ignore
-        /// let time = Time::build("09:05:12")?;
-        ///
-        /// assert_eq!(Time::build("00:00:00"), Time::midnight())
-        /// assert_eq!(Time::build("00:00:00"), Time::default())
-        /// ```
-        ///
-        /// # Errors
-        ///
-        /// Return an Err(_) if the given `time` is not formated with [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT)
-        pub fn build(time: impl ToString) -> Result<Self, SpanError> {
-            Self::new(time, BASE_TIME_FORMAT.get())
         }
 
         /// Getter for the time
@@ -121,7 +102,7 @@ pub mod time {
         ///
         /// # Example
         /// ```rust,ignore
-        /// let mut time = Time::build("00:00:00")?;
+        /// let mut time = Time::new(00, 00, 00)?;
         /// time.update(TimeUnit::Hour, 1);
         /// time.update(TimeUnit::Minute, 4);
         /// time.update(TimeUnit::Second, 30);
@@ -153,7 +134,7 @@ pub mod time {
         ///
         /// # Example
         /// ```rust,ignore
-        /// let mut time = Time::build("00:00:00")?;
+        /// let mut time = Time::new(00, 00, 00)?;
         /// time.next(TimeUnit::Hour);
         /// assert_eq!(time.to_string(), "01:00:00".to_string());
         /// ```
@@ -165,7 +146,7 @@ pub mod time {
         ///
         /// # Example
         /// ```rust,ignore
-        /// let time = Time::build("06:32:05")?;
+        /// let time = Time::new(06, 32, 05)?;
         /// assert!(time.matches(TimeUnit::Hour, 6));
         /// assert!(time.matches(TimeUnit::Minute, 32));
         /// assert!(time.matches(TimeUnit::Second, 5));
@@ -180,7 +161,8 @@ pub mod time {
 
         /// Return the current [Time] from the system
         pub fn now() -> Result<Self, SpanError> {
-            Self::build(Local::now().format(BASE_TIME_FORMAT.get()))
+            let time = Local::now();
+            Self::new(time.hour(), time.minute(), time.second())
         }
 
         /// Return midnight [Time]
@@ -188,8 +170,8 @@ pub mod time {
         /// # Example
         ///
         /// ```rust,ignore
-        /// assert_eq!(Time::build("00:00:00"), Time::midnight())
-        /// assert_eq!(Time::build("00:00:00"), Time::default())
+        /// assert_eq!(Time::new(00, 00, 00), Time::midnight())
+        /// assert_eq!(Time::new(00, 00, 00), Time::default())
         /// ```
         pub fn midnight() -> Self {
             let time = NaiveTime::default();
@@ -203,8 +185,8 @@ pub mod time {
         ///
         /// # Example
         /// ```rust,ignore
-        /// let rhs = Time::build("00:03:00")?;
-        /// let lhs = Time::build("00:00:00")?;
+        /// let rhs = Time::new(00, 03, 00)?;
+        /// let lhs = Time::new(00, 00, 00)?;
         /// assert_eq!(rhs.elapsed(&lhs), TimeDelta::try_minutes(3).unwrap());
         /// ```
         pub fn elapsed(&self, lhs: &Self) -> TimeDelta {
@@ -215,8 +197,8 @@ pub mod time {
         ///
         /// # Example
         /// ```rust,ignore
-        /// let lhs = Time::build("01:34:45")?;
-        /// let rhs = Time::build("00:00:00")?;
+        /// let lhs = Time::new(01, 34, 45)?;
+        /// let rhs = Time::new(00, 00, 00)?;
         /// assert_eq!(lhs.unit_elapsed(&rhs, TimeUnit::Hour), 1);
         /// assert_eq!(lhs.unit_elapsed(&rhs, TimeUnit::Minute), 94);
         /// assert_eq!(lhs.unit_elapsed(&rhs, TimeUnit::Second), 5685);
@@ -252,7 +234,10 @@ pub mod time {
         type Error = SpanError;
 
         fn try_from((time, format): (String, String)) -> Result<Self, Self::Error> {
-            Self::new(time, format)
+            let time = NaiveTime::parse_from_str(&time, &format)
+                .map_err(SpanError::ParseFromStr)
+                .err_ctx(TimeError)?;
+            Ok(Self { time, format })
         }
     }
 
@@ -260,7 +245,13 @@ pub mod time {
         type Error = SpanError;
 
         fn try_from((time, format): (&str, &str)) -> Result<Self, Self::Error> {
-            Self::new(time, format)
+            let time = NaiveTime::parse_from_str(time, format)
+                .map_err(SpanError::ParseFromStr)
+                .err_ctx(TimeError)?;
+            Ok(Self {
+                time,
+                format: format.to_string(),
+            })
         }
     }
 
@@ -268,7 +259,10 @@ pub mod time {
         type Error = SpanError;
 
         fn try_from(time: String) -> Result<Self, Self::Error> {
-            Self::build(time)
+            let time = NaiveTime::parse_from_str(&time, BASE_TIME_FORMAT.get())
+                .map_err(SpanError::ParseFromStr)
+                .err_ctx(TimeError)?;
+            Self::new(time.hour(), time.minute(), time.second())
         }
     }
 
@@ -276,7 +270,10 @@ pub mod time {
         type Error = SpanError;
 
         fn try_from(time: &str) -> Result<Self, Self::Error> {
-            Self::build(time)
+            let time = NaiveTime::parse_from_str(time, BASE_TIME_FORMAT.get())
+                .map_err(SpanError::ParseFromStr)
+                .err_ctx(TimeError)?;
+            Self::new(time.hour(), time.minute(), time.second())
         }
     }
 
@@ -308,7 +305,7 @@ pub mod time {
 
         #[test]
         fn time_add_overflow() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Hour, i32::MIN)?;
             assert_eq!(new_time.to_string(), "16:00:00".to_string());
             Ok(())
@@ -316,7 +313,7 @@ pub mod time {
 
         #[test]
         fn time_add_one_hour() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Hour, 1)?;
             assert_eq!(new_time.to_string(), "01:00:00".to_string());
             Ok(())
@@ -324,7 +321,7 @@ pub mod time {
 
         #[test]
         fn time_remove_one_hour() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Hour, -1)?;
             assert_eq!(new_time.to_string(), "23:00:00".to_string());
             Ok(())
@@ -332,7 +329,7 @@ pub mod time {
 
         #[test]
         fn time_add_one_minute() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Minute, 1)?;
             assert_eq!(new_time.to_string(), "00:01:00".to_string());
             Ok(())
@@ -340,7 +337,7 @@ pub mod time {
 
         #[test]
         fn time_remove_one_minute() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Minute, -1)?;
             assert_eq!(new_time.to_string(), "23:59:00".to_string());
             Ok(())
@@ -348,7 +345,7 @@ pub mod time {
 
         #[test]
         fn time_add_one_second() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Second, 1)?;
             assert_eq!(new_time.to_string(), "00:00:01".to_string());
             Ok(())
@@ -356,7 +353,7 @@ pub mod time {
 
         #[test]
         fn time_remove_one_second() -> Result<(), SpanError> {
-            let time = Time::build("00:00:00")?;
+            let time = Time::new(00, 00, 00)?;
             let new_time = time.update(TimeUnit::Second, -1)?;
             assert_eq!(new_time.to_string(), "23:59:59".to_string());
             Ok(())
@@ -364,7 +361,7 @@ pub mod time {
 
         #[test]
         fn time_serialize() -> Result<(), SpanError> {
-            let time = Time::build("12:21:46")?;
+            let time = Time::new(12, 21, 46)?;
             let Ok(serialized) = serde_json::to_string(&time) else {
                 panic!("Error while serializing time");
             };
@@ -388,7 +385,7 @@ pub mod time {
 
         #[test]
         fn time_serialize_format() -> Result<(), SpanError> {
-            let time = Time::build("12:21:46")?.format("T%H_%M_%S");
+            let time = Time::new(12, 21, 46)?.format("T%H_%M_%S");
             let Ok(serialized) = serde_json::to_string(&time) else {
                 panic!("Error while serializing time");
             };
@@ -412,7 +409,7 @@ pub mod time {
 
         #[test]
         fn time_default_equal_midnight() -> Result<(), SpanError> {
-            let time_built = Time::build("00:00:00")?;
+            let time_built = Time::new(00, 00, 00)?;
             let midnight = Time::midnight();
             let default = Time::default();
             assert_eq!(time_built.to_string(), midnight.to_string());
@@ -426,7 +423,7 @@ pub mod time {
 
         #[test]
         fn next_second() -> Result<(), SpanError> {
-            let mut time = Time::build("04:23:12")?;
+            let mut time = Time::new(04, 23, 12)?;
             time = time.next(TimeUnit::Second)?;
             assert_eq!(time.to_string(), "04:23:13".to_string());
             Ok(())
@@ -434,7 +431,7 @@ pub mod time {
 
         #[test]
         fn next_minute() -> Result<(), SpanError> {
-            let mut time = Time::build("11:03:22")?;
+            let mut time = Time::new(11, 03, 22)?;
             time = time.next(TimeUnit::Minute)?;
             assert_eq!(time.to_string(), "11:04:22".to_string());
             Ok(())
@@ -442,7 +439,7 @@ pub mod time {
 
         #[test]
         fn next_hour_on_midnight() -> Result<(), SpanError> {
-            let mut time = Time::build("23:59:34")?;
+            let mut time = Time::new(23, 59, 34)?;
             time = time.next(TimeUnit::Hour)?;
             assert_eq!(time.to_string(), "00:59:34".to_string());
             Ok(())
@@ -450,7 +447,7 @@ pub mod time {
 
         #[test]
         fn matches_every_unit_in_time() -> Result<(), SpanError> {
-            let time = Time::build("05:23:18")?;
+            let time = Time::new(05, 23, 18)?;
             assert!(time.matches(TimeUnit::Hour, 5));
             assert!(time.matches(TimeUnit::Minute, 23));
             assert!(time.matches(TimeUnit::Second, 18));
@@ -459,24 +456,24 @@ pub mod time {
 
         #[test]
         fn elapsed_three_minute() -> Result<(), SpanError> {
-            let time = Time::build("00:03:00")?;
-            let lhs = Time::build("00:00:00")?;
+            let time = Time::new(00, 03, 00)?;
+            let lhs = Time::new(00, 00, 00)?;
             assert_eq!(time.elapsed(&lhs), TimeDelta::try_minutes(3).unwrap());
             Ok(())
         }
 
         #[test]
         fn elapsed_seconds() -> Result<(), SpanError> {
-            let time = Time::build("01:21:00")?;
-            let lhs = Time::build("00:00:00")?;
+            let time = Time::new(01, 21, 00)?;
+            let lhs = Time::new(00, 00, 00)?;
             assert_eq!(time.elapsed(&lhs), TimeDelta::try_seconds(4860).unwrap());
             Ok(())
         }
 
         #[test]
         fn elapsed_multiple_units() -> Result<(), SpanError> {
-            let time = Time::build("01:01:01")?;
-            let lhs = Time::build("00:00:00")?;
+            let time = Time::new(01, 01, 01)?;
+            let lhs = Time::new(00, 00, 00)?;
             assert_eq!(
                 time.elapsed(&lhs),
                 TimeDelta::try_hours(1)
@@ -491,8 +488,8 @@ pub mod time {
 
         #[test]
         fn unit_elapsed() -> Result<(), SpanError> {
-            let time = Time::build("01:34:45")?;
-            let rhs = Time::build("00:00:00")?;
+            let time = Time::new(01, 34, 45)?;
+            let rhs = Time::new(00, 00, 00)?;
             let hours_in_between = time.unit_elapsed(&rhs, TimeUnit::Hour);
             let minutes_in_between = time.unit_elapsed(&rhs, TimeUnit::Minute);
             let seconds_in_between = time.unit_elapsed(&rhs, TimeUnit::Second);
@@ -521,7 +518,7 @@ mod datetime_into_time {
     ///
     /// # Example
     /// ```rust,ignore
-    /// let datetime = DateTime::build("2021-10-10 12:34:56")?;
+    /// let datetime = DateTime::new(2021, 10, 10)?.with_time(12, 34, 56)?;
     /// let time = Time::from(datetime);
     /// assert_eq!(time.to_string(), "12:34:56".to_string());
     /// ```
@@ -539,7 +536,7 @@ mod datetime_into_time {
     mod test {
         #[test]
         fn datetime_into_time() -> Result<(), crate::error::SpanError> {
-            let datetime = crate::datetime::DateTime::build("2021-10-10 12:34:56")?;
+            let datetime = crate::datetime::DateTime::new(2021, 10, 10)?.with_time(12, 34, 56)?;
             let time = crate::time::Time::from(datetime);
             assert_eq!(time.to_string(), "12:34:56".to_string());
             Ok(())
@@ -552,7 +549,7 @@ mod datetime_into_time {
                 .datetime_format("%Y-%m-%d %H:%M:%S")
                 .time_format("%H_%M_%S")
                 .build();
-            let datetime = crate::datetime::DateTime::build("2021-10-10 12:34:56")?;
+            let datetime = crate::datetime::DateTime::new(2021, 10, 10)?.with_time(12, 34, 56)?;
             let time = crate::time::Time::from(datetime);
             assert_eq!(time.to_string(), "12_34_56".to_string());
             Ok(())

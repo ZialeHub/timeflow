@@ -1,6 +1,7 @@
 pub use crate::builder::SpanBuilder;
 pub use crate::error::{ErrorContext, SpanError};
 pub use crate::span::Span;
+pub use crate::timestamp::{TimestampMicro, TimestampMilli, TimestampNano};
 
 #[cfg(feature = "date")]
 pub use crate::{

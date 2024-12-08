@@ -11,6 +11,7 @@ pub mod datetime {
     use crate::{
         error::{DateTimeError, ErrorContext, SpanError},
         span::Span,
+        timestamp::{TimestampMicro, TimestampMilli, TimestampNano},
         BaseFormat, GetInner,
     };
 
@@ -396,32 +397,50 @@ pub mod datetime {
         }
     }
 
-    impl TryFrom<i32> for DateTime {
-        type Error = SpanError;
-        fn try_from(timestamp: i32) -> Result<Self, Self::Error> {
-            let datetime = chrono::DateTime::from_timestamp(timestamp as i64, 0)
-                .ok_or(SpanError::ParseFromTimestamp(
-                    "Error while parsing timestamp from i32".to_string(),
-                ))
-                .err_ctx(DateTimeError)?;
+    impl TryFrom<TimestampMilli> for crate::datetime::DateTime {
+        type Error = crate::error::SpanError;
+
+        fn try_from(timestamp: TimestampMilli) -> Result<Self, Self::Error> {
+            let datetime = chrono::DateTime::from_timestamp(*timestamp, 0).ok_or(
+                crate::error::SpanError::ParseFromTimestamp(
+                    "Error while parsing timestamp".to_string(),
+                ),
+            )?;
             Ok(Self {
                 datetime: datetime.naive_utc(),
-                format: BASE_DATETIME_FORMAT.get(),
+                format: crate::datetime::BASE_DATETIME_FORMAT.get(),
             })
         }
     }
 
-    impl TryFrom<i64> for DateTime {
-        type Error = SpanError;
-        fn try_from(timestamp: i64) -> Result<Self, Self::Error> {
-            let datetime = chrono::DateTime::from_timestamp(timestamp, 0)
-                .ok_or(SpanError::ParseFromTimestamp(
-                    "Error while parsing timestamp from i64".to_string(),
-                ))
-                .err_ctx(DateTimeError)?;
+    impl TryFrom<TimestampMicro> for crate::datetime::DateTime {
+        type Error = crate::error::SpanError;
+
+        fn try_from(timestamp: TimestampMicro) -> Result<Self, Self::Error> {
+            let datetime = chrono::DateTime::from_timestamp(*timestamp / 1_000, 0).ok_or(
+                crate::error::SpanError::ParseFromTimestamp(
+                    "Error while parsing timestamp".to_string(),
+                ),
+            )?;
             Ok(Self {
                 datetime: datetime.naive_utc(),
-                format: BASE_DATETIME_FORMAT.get(),
+                format: crate::datetime::BASE_DATETIME_FORMAT.get(),
+            })
+        }
+    }
+
+    impl TryFrom<TimestampNano> for crate::datetime::DateTime {
+        type Error = crate::error::SpanError;
+
+        fn try_from(timestamp: TimestampNano) -> Result<Self, Self::Error> {
+            let datetime = chrono::DateTime::from_timestamp(*timestamp / 1_000_000, 0).ok_or(
+                crate::error::SpanError::ParseFromTimestamp(
+                    "Error while parsing timestamp".to_string(),
+                ),
+            )?;
+            Ok(Self {
+                datetime: datetime.naive_utc(),
+                format: crate::datetime::BASE_DATETIME_FORMAT.get(),
             })
         }
     }
@@ -875,6 +894,61 @@ pub mod datetime {
             let datetime = DateTime::new(2023, 10, 09)?.with_time(01, 01, 01)?;
             let datetime = datetime.clear_time();
             assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
+            Ok(())
+        }
+
+        #[test]
+        fn datetime_from_timestamp_milli() -> Result<(), SpanError> {
+            let timestamp: TimestampMilli = 1735683010.into();
+            let datetime: DateTime = DateTime::try_from(timestamp)?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
+            Ok(())
+        }
+
+        #[test]
+        fn datetime_from_timestamp_micro() -> Result<(), SpanError> {
+            let timestamp: TimestampMicro = 1735683010000.into();
+            let datetime: DateTime = DateTime::try_from(timestamp)?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
+            Ok(())
+        }
+
+        #[test]
+        fn datetime_from_timestamp_nano() -> Result<(), SpanError> {
+            let timestamp: TimestampNano = 1735683010000000.into();
+            let datetime: DateTime = DateTime::try_from(timestamp)?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
+            Ok(())
+        }
+
+        #[test]
+        fn timestamp_milli_into_datetime() -> Result<(), SpanError> {
+            let timestamp: TimestampMilli = 1735683010.into();
+            let datetime: DateTime = timestamp.try_into()?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
+            Ok(())
+        }
+
+        #[test]
+        fn timestamp_micro_into_datetime() -> Result<(), SpanError> {
+            let timestamp: TimestampMicro = 1735683010000.into();
+            let datetime: DateTime = timestamp.try_into()?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
+            Ok(())
+        }
+
+        #[test]
+        fn timestamp_nano_into_datetime() -> Result<(), SpanError> {
+            let timestamp: TimestampNano = 1735683010000000.into();
+            let datetime: DateTime = timestamp.try_into()?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
+            Ok(())
+        }
+
+        #[test]
+        fn i64_into_datetime() -> Result<(), SpanError> {
+            let datetime: DateTime = TimestampMilli::from(1735683010).try_into()?;
+            assert_eq!(datetime.to_string(), "2024-12-31 22:10:10");
             Ok(())
         }
     }

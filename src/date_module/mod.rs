@@ -33,6 +33,15 @@ pub mod date {
         pub(crate) format: String,
     }
 
+    impl Default for Date {
+        fn default() -> Self {
+            Self {
+                date: NaiveDate::default(),
+                format: BASE_DATE_FORMAT.get().to_string(),
+            }
+        }
+    }
+
     impl std::fmt::Display for Date {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(f, "{}", self.date.format(&self.format))
@@ -588,6 +597,8 @@ pub mod date {
 
 #[cfg(all(feature = "date", feature = "datetime"))]
 mod datetime_into_date {
+    use crate::GetInner;
+
     impl From<crate::datetime::DateTime> for crate::date::Date {
         /// Convert a [DateTime] to a [Date]
         ///
@@ -614,6 +625,21 @@ mod datetime_into_date {
             let datetime = crate::datetime::DateTime::build("2023-10-09 12:00:00")?;
             let date = crate::date::Date::from(datetime);
             assert_eq!(date.to_string(), "2023-10-09".to_string());
+            Ok(())
+        }
+
+        #[test]
+        #[ignore]
+        fn datetime_into_date_wrong_format() -> Result<(), crate::error::SpanError> {
+            let _span_builder = crate::builder::SpanBuilder::builder()
+                .datetime_format("%Y-%m-%d %H:%M:%S")
+                .date_format("%d/%m/%Y")
+                .build();
+            let datetime = crate::datetime::DateTime::build("2023-10-09 12:00:00")?;
+            let date = crate::date::Date::from(datetime);
+            assert_eq!(date.to_string(), "09/10/2023".to_string());
+            let next = date.next(crate::date::DateUnit::Day)?;
+            assert_eq!(next.to_string(), "10/10/2023".to_string());
             Ok(())
         }
     }

@@ -30,10 +30,19 @@ pub mod datetime {
     /// Structure to handle datetime management
     ///
     /// Use [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT) as default format for datetime
-    #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Default, Clone, Serialize, Deserialize)]
+    #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
     pub struct DateTime {
         pub(crate) datetime: NaiveDateTime,
         pub(crate) format: String,
+    }
+
+    impl Default for DateTime {
+        fn default() -> Self {
+            Self {
+                datetime: NaiveDateTime::default(),
+                format: BASE_DATETIME_FORMAT.get().to_string(),
+            }
+        }
     }
 
     impl std::fmt::Display for DateTime {
@@ -784,7 +793,7 @@ pub mod datetime {
 
 #[cfg(all(feature = "date", feature = "datetime"))]
 mod date_into_datetime {
-    use crate::error::ErrorContext;
+    use crate::GetInner;
 
     /// Convert a [Date] to a [DateTime]
     ///
@@ -796,19 +805,13 @@ mod date_into_datetime {
     /// let datetime = crate::datetime::DateTime::try_from(date)?;
     /// assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
     /// ```
-    impl TryFrom<crate::date::Date> for crate::datetime::DateTime {
-        type Error = crate::error::SpanError;
-        fn try_from(value: crate::date::Date) -> Result<Self, Self::Error> {
-            let Some(datetime) = value.date.and_hms_opt(0, 0, 0) else {
-                return Err(crate::error::SpanError::InvalidTime(String::from(
-                    "00:00:00",
-                )))
-                .err_ctx(crate::error::DateTimeError);
-            };
-            Ok(Self {
+    impl From<crate::date::Date> for crate::datetime::DateTime {
+        fn from(value: crate::date::Date) -> Self {
+            let datetime = chrono::NaiveDateTime::new(value.date(), chrono::NaiveTime::default());
+            Self {
                 datetime,
                 format: crate::datetime::BASE_DATETIME_FORMAT.get().to_string(),
-            })
+            }
         }
     }
 
@@ -817,7 +820,20 @@ mod date_into_datetime {
         #[test]
         fn date_into_datetime() -> Result<(), crate::error::SpanError> {
             let date = crate::date::Date::build("2023-10-09")?;
-            let datetime = crate::datetime::DateTime::try_from(date)?;
+            let datetime = crate::datetime::DateTime::from(date);
+            assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
+            Ok(())
+        }
+
+        #[test]
+        #[ignore]
+        fn date_into_datetime_wrong_format() -> Result<(), crate::error::SpanError> {
+            let _span_builder = crate::builder::SpanBuilder::builder()
+                .datetime_format("%Y-%m-%d %H:%M:%S")
+                .date_format("%d/%m/%Y")
+                .build();
+            let date = crate::date::Date::build("09/10/2023")?;
+            let datetime = crate::datetime::DateTime::from(date);
             assert_eq!(datetime.to_string(), "2023-10-09 00:00:00".to_string());
             Ok(())
         }
@@ -826,6 +842,8 @@ mod date_into_datetime {
 
 #[cfg(all(feature = "time", feature = "datetime"))]
 mod time_into_datetime {
+    use crate::GetInner;
+
     /// Convert a [Time] to a [DateTime]
     ///
     /// Date will be set to 1970-01-01
@@ -836,17 +854,13 @@ mod time_into_datetime {
     /// let datetime = crate::datetime::DateTime::try_from(time)?;
     /// assert_eq!(datetime.to_string(), "1970-01-01 13:27:57".to_string());
     /// ```
-    impl TryFrom<crate::time::Time> for crate::datetime::DateTime {
-        type Error = crate::error::SpanError;
-        fn try_from(value: crate::time::Time) -> Result<Self, Self::Error> {
-            let datetime = crate::datetime::DateTime::new(
-                format!("1970-01-01 {}", value),
-                crate::datetime::BASE_DATETIME_FORMAT.get().to_string(),
-            )?;
-            Ok(Self {
-                datetime: datetime.datetime(),
+    impl From<crate::time::Time> for crate::datetime::DateTime {
+        fn from(value: crate::time::Time) -> Self {
+            let datetime = chrono::NaiveDateTime::new(chrono::NaiveDate::default(), value.time());
+            Self {
+                datetime,
                 format: crate::datetime::BASE_DATETIME_FORMAT.get().to_string(),
-            })
+            }
         }
     }
 
@@ -855,8 +869,21 @@ mod time_into_datetime {
         #[test]
         fn time_into_datetime() -> Result<(), crate::error::SpanError> {
             let time = crate::time::Time::build("13:27:57")?;
-            let datetime = crate::datetime::DateTime::try_from(time)?;
+            let datetime = crate::datetime::DateTime::from(time);
             assert_eq!(datetime.to_string(), "1970-01-01 13:27:57".to_string());
+            Ok(())
+        }
+
+        #[test]
+        #[ignore]
+        fn time_into_datetime_wrong_format() -> Result<(), crate::error::SpanError> {
+            let _span_builder = crate::builder::SpanBuilder::builder()
+                .datetime_format("%Y-%m-%d %H_%M_%S")
+                .time_format("%H:%M:%S")
+                .build();
+            let time = crate::time::Time::build("13:27:57")?;
+            let datetime = crate::datetime::DateTime::from(time);
+            assert_eq!(datetime.to_string(), "1970-01-01 13_27_57".to_string());
             Ok(())
         }
     }

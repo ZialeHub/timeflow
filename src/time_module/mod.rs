@@ -33,6 +33,12 @@ pub mod time {
         pub(crate) format: String,
     }
 
+    impl Default for Time {
+        fn default() -> Self {
+            Self::midnight()
+        }
+    }
+
     impl std::fmt::Display for Time {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{}", self.time.format(&self.format))
@@ -50,12 +56,6 @@ pub mod time {
     impl DerefMut for Time {
         fn deref_mut(&mut self) -> &mut Self::Target {
             &mut self.time
-        }
-    }
-
-    impl Default for Time {
-        fn default() -> Self {
-            Self::midnight()
         }
     }
 
@@ -192,7 +192,7 @@ pub mod time {
         /// assert_eq!(Time::build("00:00:00"), Time::default())
         /// ```
         pub fn midnight() -> Self {
-            let time = NaiveTime::from_hms_opt(0, 0, 0).expect("Error Time midnight");
+            let time = NaiveTime::default();
             Self {
                 time,
                 format: BASE_TIME_FORMAT.get().to_string(),
@@ -513,6 +513,8 @@ pub mod time {
 
 #[cfg(all(feature = "time", feature = "datetime"))]
 mod datetime_into_time {
+    use crate::GetInner;
+
     /// Convert a [DateTime] to a [Time]
     ///
     /// Only keep the time part of the [DateTime]
@@ -540,6 +542,19 @@ mod datetime_into_time {
             let datetime = crate::datetime::DateTime::build("2021-10-10 12:34:56")?;
             let time = crate::time::Time::from(datetime);
             assert_eq!(time.to_string(), "12:34:56".to_string());
+            Ok(())
+        }
+
+        #[test]
+        #[ignore]
+        fn datetime_into_time_wrong_format() -> Result<(), crate::error::SpanError> {
+            let _span_builder = crate::builder::SpanBuilder::builder()
+                .datetime_format("%Y-%m-%d %H:%M:%S")
+                .time_format("%H_%M_%S")
+                .build();
+            let datetime = crate::datetime::DateTime::build("2021-10-10 12:34:56")?;
+            let time = crate::time::Time::from(datetime);
+            assert_eq!(time.to_string(), "12_34_56".to_string());
             Ok(())
         }
     }

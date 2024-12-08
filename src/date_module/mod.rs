@@ -64,6 +64,13 @@ pub mod date {
     }
 
     impl Date {
+        /// Getter for the inner date
+        pub fn date(&self) -> NaiveDate {
+            self.date
+        }
+    }
+
+    impl Span<DateUnit, i32> for Date {
         /// Create a new variable [Date] from year, month and day
         ///
         /// Use [BASE_DATE_FORMAT](static@BASE_DATE_FORMAT) as default format for date
@@ -77,7 +84,7 @@ pub mod date {
         /// # Errors
         ///
         /// Return an Err(_) if `time` is not formated with `format`
-        pub fn new(year: i32, month: u32, day: u32) -> Result<Self, SpanError> {
+        fn new(year: i32, month: u32, day: u32) -> Result<Self, SpanError> {
             let Some(date) = NaiveDate::from_ymd_opt(year, month, day) else {
                 return Err(SpanError::InvalidDate(year, month, day)).err_ctx(DateError);
             };
@@ -87,13 +94,6 @@ pub mod date {
             })
         }
 
-        /// Getter for the inner date
-        pub fn date(&self) -> NaiveDate {
-            self.date
-        }
-    }
-
-    impl Span<DateUnit> for Date {
         /// Setter for the format
         ///
         ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.

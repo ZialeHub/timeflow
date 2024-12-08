@@ -61,31 +61,6 @@ pub mod time {
     }
 
     impl Time {
-        /// Create a new variable [Time] from hour, minute and second
-        ///
-        /// Use the format [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT) by default
-        ///
-        /// # Example
-        ///
-        /// ```rust,ignore
-        /// let time = Time::new(09, 27, 00)?;
-        ///
-        /// assert_eq!(time.to_string(), "09:27:00".to_string());
-        /// ```
-        ///
-        /// # Errors
-        ///
-        /// Return an Err(_) if `time` is not formated with `format`
-        pub fn new(hour: u32, minute: u32, second: u32) -> Result<Self, SpanError> {
-            let Some(time) = NaiveTime::from_hms_opt(hour, minute, second) else {
-                return Err(SpanError::InvalidTime(hour, minute, second)).err_ctx(TimeError);
-            };
-            Ok(Self {
-                time,
-                format: BASE_TIME_FORMAT.get().to_string(),
-            })
-        }
-
         /// Getter for the time
         pub fn time(&self) -> NaiveTime {
             self.time
@@ -108,7 +83,32 @@ pub mod time {
         }
     }
 
-    impl Span<TimeUnit> for Time {
+    impl Span<TimeUnit, u32> for Time {
+        /// Create a new variable [Time] from hour, minute and second
+        ///
+        /// Use the format [BASE_TIME_FORMAT](static@BASE_TIME_FORMAT) by default
+        ///
+        /// # Example
+        ///
+        /// ```rust,ignore
+        /// let time = Time::new(09, 27, 00)?;
+        ///
+        /// assert_eq!(time.to_string(), "09:27:00".to_string());
+        /// ```
+        ///
+        /// # Errors
+        ///
+        /// Return an Err(_) if `time` is not formated with `format`
+        fn new(hour: u32, minute: u32, second: u32) -> Result<Self, SpanError> {
+            let Some(time) = NaiveTime::from_hms_opt(hour, minute, second) else {
+                return Err(SpanError::InvalidTime(hour, minute, second)).err_ctx(TimeError);
+            };
+            Ok(Self {
+                time,
+                format: BASE_TIME_FORMAT.get().to_string(),
+            })
+        }
+
         /// Setter for the format
         ///
         ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
@@ -611,6 +611,8 @@ mod datetime_into_time {
 
     #[cfg(test)]
     mod test {
+        use crate::span::Span;
+
         #[test]
         fn datetime_into_time() -> Result<(), crate::error::SpanError> {
             let datetime = crate::datetime::DateTime::new(2021, 10, 10)?.with_time(12, 34, 56)?;

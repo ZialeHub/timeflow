@@ -12,7 +12,7 @@ thiserror = "2.0.3"
 serde_json = "1.0.114"
 
 [features]
-default = []
+default = ["time", "date", "datetime"]
 full = ["time", "date", "datetime"]
 time = []
 date = []

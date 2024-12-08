@@ -67,32 +67,6 @@ pub mod datetime {
     }
 
     impl DateTime {
-        /// Create a new variable [DateTime] from year, month and day
-        ///
-        /// Default time is set to 00:00:00
-        ///
-        /// Use [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT) as default format
-        ///
-        /// # Example
-        ///
-        /// ```rust,ignore
-        /// let datetime = DateTime::new(2024, 09, 27)?;
-        /// ```
-        ///
-        /// # Errors
-        ///
-        /// Return an Err(_) if `datetime` is not formated with `format`
-        pub fn new(year: i32, month: u32, day: u32) -> Result<Self, SpanError> {
-            let date = chrono::NaiveDate::from_ymd_opt(year, month, day)
-                .ok_or(SpanError::InvalidDate(year, month, day))
-                .err_ctx(DateTimeError)?;
-            let datetime = NaiveDateTime::new(date, chrono::NaiveTime::default());
-            Ok(Self {
-                datetime,
-                format: BASE_DATETIME_FORMAT.get().to_string(),
-            })
-        }
-
         /// Getter for the datetime
         pub fn datetime(&self) -> NaiveDateTime {
             self.datetime
@@ -135,7 +109,33 @@ pub mod datetime {
         }
     }
 
-    impl Span<DateTimeUnit> for DateTime {
+    impl Span<DateTimeUnit, i32> for DateTime {
+        /// Create a new variable [DateTime] from year, month and day
+        ///
+        /// Default time is set to 00:00:00
+        ///
+        /// Use [BASE_DATETIME_FORMAT](static@BASE_DATETIME_FORMAT) as default format
+        ///
+        /// # Example
+        ///
+        /// ```rust,ignore
+        /// let datetime = DateTime::new(2024, 09, 27)?;
+        /// ```
+        ///
+        /// # Errors
+        ///
+        /// Return an Err(_) if `datetime` is not formated with `format`
+        fn new(year: i32, month: u32, day: u32) -> Result<Self, SpanError> {
+            let date = chrono::NaiveDate::from_ymd_opt(year, month, day)
+                .ok_or(SpanError::InvalidDate(year, month, day))
+                .err_ctx(DateTimeError)?;
+            let datetime = NaiveDateTime::new(date, chrono::NaiveTime::default());
+            Ok(Self {
+                datetime,
+                format: BASE_DATETIME_FORMAT.get().to_string(),
+            })
+        }
+
         /// Setter for the format
         ///
         ///  See the [chrono::format::strftime] for the supported escape sequences of `format`.
@@ -901,6 +901,8 @@ mod date_into_datetime {
 
     #[cfg(test)]
     mod test {
+        use crate::span::Span;
+
         #[test]
         fn date_into_datetime() -> Result<(), crate::error::SpanError> {
             let date = crate::date::Date::new(2023, 10, 09)?;
@@ -950,6 +952,8 @@ mod time_into_datetime {
 
     #[cfg(test)]
     mod test {
+        use crate::span::Span;
+
         #[test]
         fn time_into_datetime() -> Result<(), crate::error::SpanError> {
             let time = crate::time::Time::new(13, 27, 57)?;

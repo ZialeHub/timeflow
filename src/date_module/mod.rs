@@ -18,7 +18,7 @@ pub mod date {
         LazyLock::new(|| RwLock::new("%Y-%m-%d"));
 
     /// Unit to update [Date]
-    #[derive(Debug, Clone)]
+    #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
     pub enum DateUnit {
         Year,
         Month,

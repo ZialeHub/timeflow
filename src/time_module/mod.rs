@@ -18,7 +18,7 @@ pub mod time {
         LazyLock::new(|| RwLock::new("%H:%M:%S"));
 
     /// Unit to update [Time]
-    #[derive(Debug, Clone)]
+    #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
     pub enum TimeUnit {
         Hour,
         Minute,

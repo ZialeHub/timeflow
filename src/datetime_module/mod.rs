@@ -19,7 +19,7 @@ pub mod datetime {
         LazyLock::new(|| RwLock::new(None));
 
     /// Unit to update [DateTime]
-    #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Serialize, Deserialize)]
+    #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Copy, Serialize, Deserialize)]
     pub enum DateTimeUnit {
         Year,
         Month,

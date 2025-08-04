@@ -3,7 +3,7 @@ members = ["span"]
 resolver = "2"
 
 [workspace.package]
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 authors = ["ZialeHub", "gpoblon"]
 readme = "README.md"
@@ -12,3 +12,7 @@ documentation = "https://kellnr.ryse.ovh/span"
 homepage = "https://kellnr.ryse.ovh/span"
 repository = "https://github.com/ryse-rs/span"
 publish = ["kellnr"]
+profile = "codegen"
+
+[workspace.build]
+profiler = true

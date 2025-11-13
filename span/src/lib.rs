@@ -4,26 +4,19 @@ compile_error!("At least one feature must be enabled: 'time', 'date', or 'dateti
 
 pub mod builder;
 #[cfg(feature = "date")]
-pub mod date_module;
+pub mod date;
 #[cfg(feature = "datetime")]
-pub mod datetime_module;
+pub mod datetime;
 pub mod error;
 pub mod prelude;
 pub mod span;
 #[cfg(feature = "time")]
-pub mod time_module;
+pub mod time;
 pub mod timestamp;
 
 #[cfg(feature = "datetime")]
 use std::ops::Deref;
 use std::sync::{LazyLock, RwLock};
-
-#[cfg(feature = "date")]
-pub use date_module::date;
-#[cfg(feature = "datetime")]
-pub use datetime_module::datetime;
-#[cfg(feature = "time")]
-pub use time_module::time;
 
 pub trait GetInner<T: std::fmt::Display> {
     fn get(&self) -> T;
@@ -64,6 +57,7 @@ pub mod test {
     use super::*;
     use prelude::*;
 
+    #[cfg(feature = "datetime")]
     #[test]
     fn log_error_datetime_parse() {
         let datetime = DateTime::new(2023, 10, 9);
@@ -75,6 +69,7 @@ pub mod test {
         });
     }
 
+    #[cfg(feature = "datetime")]
     #[test]
     fn log_error_datetime_parse_timestamp() {
         let err = SpanError::DateTime(
@@ -89,6 +84,7 @@ pub mod test {
         )
     }
 
+    #[cfg(feature = "datetime")]
     #[test]
     fn log_error_datetime_invalid_update() {
         let err = SpanError::DateTime(
@@ -103,6 +99,7 @@ pub mod test {
         )
     }
 
+    #[cfg(feature = "date")]
     #[test]
     fn log_error_date_parse() {
         let datetime = Date::new(2023, 10, 31);
@@ -111,6 +108,7 @@ pub mod test {
         });
     }
 
+    #[cfg(feature = "date")]
     #[test]
     fn log_error_date_invalid_update() {
         let err = SpanError::Date(
@@ -125,6 +123,7 @@ pub mod test {
         )
     }
 
+    #[cfg(feature = "time")]
     #[test]
     fn log_error_time_invalid_update() {
         let err = SpanError::Time(
@@ -138,6 +137,8 @@ pub mod test {
             "Time ➤  InvalidUpdate: Cannot add x Second to time error"
         )
     }
+
+    #[cfg(all(feature = "date", feature = "time", feature = "datetime"))]
     #[test]
     fn builder_format_default() -> Result<(), SpanError> {
         SpanBuilder::builder().build();
@@ -152,6 +153,7 @@ pub mod test {
 
     /// This test is ignored because it changes the global state of the date, time, and datetime
     /// Tests are running in parallel, and changing the global state might affect other tests
+    #[cfg(all(feature = "date", feature = "time", feature = "datetime"))]
     #[test]
     #[ignore]
     fn builder_format_build() -> Result<(), SpanError> {
@@ -166,6 +168,7 @@ pub mod test {
         Ok(())
     }
 
+    #[cfg(all(feature = "date", feature = "time", feature = "datetime"))]
     #[test]
     #[ignore]
     fn builder_format_build_ignored() -> Result<(), SpanError> {
@@ -182,6 +185,7 @@ pub mod test {
         Ok(())
     }
 
+    #[cfg(all(feature = "date", feature = "time", feature = "datetime"))]
     #[test]
     #[ignore]
     fn builder_format_build_datetime_skipped() -> Result<(), SpanError> {

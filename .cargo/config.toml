@@ -2,14 +2,3 @@
 # set environment variables from here, e.g.:
 # be careful not to put secrets as it will be committed to the repository
 RUST_BACKTRACE = "0"
-
-[net]
-# This allows the use of private dependencies
-# For this to work, user (same for gh runner) must have a GitHub ssh key set up
-# Note: this is also set in .worklows env variables so it is not necessary here
-git-fetch-with-cli = true
-
-# This allows the use (pull) of our private crate registry
-[registries.kellnr]
-index = "sparse+https://kellnr.ryse.ovh/api/v1/crates/"
-credential-provider = ["cargo:token"]

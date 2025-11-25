@@ -1,3 +1,4 @@
+#![doc = include_str!("../../README.md")]
 #![allow(rustdoc::private_intra_doc_links)]
 #[cfg(not(any(feature = "time", feature = "date", feature = "datetime")))]
 compile_error!("At least one feature must be enabled: 'time', 'date', or 'datetime'");
